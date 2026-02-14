@@ -18,6 +18,9 @@ const signaturePad = document.getElementById("signaturePad");
 const clearSignatureButton = document.getElementById("clearSignatureButton");
 const disputeSection = document.getElementById("disputeSection");
 const disputeReasonInput = document.getElementById("disputeReason");
+const channelInput = document.getElementById("channel");
+const phoneNumberField = document.getElementById("phoneNumberField");
+const phoneNumberInput = document.getElementById("phoneNumber");
 
 const signatureContext = signaturePad.getContext("2d");
 let isDrawingSignature = false;
@@ -79,6 +82,15 @@ signaturePad.addEventListener("touchend", endSignatureDraw, { passive: false });
 clearSignatureButton.addEventListener("click", clearSignaturePad);
 
 let currentLookup = null;
+
+function togglePhoneNumberField() {
+  const isPhone = channelInput.value === "Phone";
+  phoneNumberField.classList.toggle("hidden", !isPhone);
+  phoneNumberInput.required = isPhone;
+  if (!isPhone) {
+    phoneNumberInput.value = "";
+  }
+}
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : "-";
@@ -191,6 +203,7 @@ requestForm.addEventListener("submit", async (event) => {
     department: document.getElementById("department").value.trim(),
     priority: document.getElementById("priority").value,
     channel: document.getElementById("channel").value,
+    phoneNumber: document.getElementById("phoneNumber").value.trim(),
     category: document.getElementById("category").value,
     impact: document.getElementById("impact").value,
     details: document.getElementById("details").value.trim(),
@@ -201,14 +214,23 @@ requestForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (request.channel === "Phone" && !request.phoneNumber) {
+    statusMessage.textContent = "Phone number is required when contact channel is Phone.";
+    return;
+  }
+
   try {
     const created = await createRequest(request);
     requestForm.reset();
+    togglePhoneNumberField();
     statusMessage.textContent = `Ticket created: ${created.ticketKey} (ID ${created.id}). Save this reference for tracking.`;
   } catch (error) {
     statusMessage.textContent = error.message;
   }
 });
+
+channelInput.addEventListener("change", togglePhoneNumberField);
+togglePhoneNumberField();
 
 lookupForm.addEventListener("submit", async (event) => {
   event.preventDefault();

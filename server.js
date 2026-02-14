@@ -38,6 +38,10 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function isValidPhoneNumber(phoneNumber) {
+  return /^\+?[0-9()\-\s]{7,25}$/.test(phoneNumber || "");
+}
+
 function isStrongPassword(password) {
   return (
     password.length >= 12
@@ -222,6 +226,7 @@ db.serialize(() => {
       department TEXT NOT NULL,
       priority TEXT NOT NULL,
       channel TEXT NOT NULL DEFAULT 'Phone',
+      contact_phone TEXT,
       category TEXT NOT NULL DEFAULT 'General',
       impact TEXT NOT NULL DEFAULT 'Medium',
       details TEXT NOT NULL,
@@ -254,6 +259,7 @@ db.serialize(() => {
     "ALTER TABLE requests ADD COLUMN requester_signed_off_at TEXT",
     "ALTER TABLE requests ADD COLUMN updated_at TEXT",
     "ALTER TABLE requests ADD COLUMN channel TEXT DEFAULT 'Phone'",
+    "ALTER TABLE requests ADD COLUMN contact_phone TEXT",
     "ALTER TABLE requests ADD COLUMN category TEXT DEFAULT 'General'",
     "ALTER TABLE requests ADD COLUMN impact TEXT DEFAULT 'Medium'",
   ];
@@ -410,13 +416,24 @@ app.use("/api/worker/login", authLimiter);
 app.use(express.static(__dirname));
 
 app.post("/api/requests", async (req, res) => {
-  const { name, email, department, priority, details, channel, category, impact } = req.body;
+  const {
+    name,
+    email,
+    department,
+    priority,
+    details,
+    channel,
+    phoneNumber,
+    category,
+    impact,
+  } = req.body;
 
   const cleanName = normalizeText(name, 120);
   const cleanEmail = normalizeEmail(email);
   const cleanDepartment = normalizeText(department, 80);
   const cleanPriority = normalizeText(priority, 20);
   const cleanChannel = normalizeText(channel || "Phone", 20);
+  const cleanPhoneNumber = normalizeText(phoneNumber, 25);
   const cleanCategory = normalizeText(category || "General", 30);
   const cleanImpact = normalizeText(impact || "Medium", 20);
   const cleanDetails = normalizeText(details, 5000);
@@ -437,15 +454,25 @@ app.post("/api/requests", async (req, res) => {
     return;
   }
 
+  if (cleanChannel === "Phone" && !cleanPhoneNumber) {
+    res.status(400).json({ error: "Phone number is required when contact channel is Phone." });
+    return;
+  }
+
+  if (cleanPhoneNumber && !isValidPhoneNumber(cleanPhoneNumber)) {
+    res.status(400).json({ error: "Phone number format is invalid." });
+    return;
+  }
+
   try {
     const timestamp = new Date().toISOString();
     const insertResult = await runSql(
       `
         INSERT INTO requests (
-          name, email, department, priority, channel, category, impact,
+          name, email, department, priority, channel, contact_phone, category, impact,
           details, status, requester_signed_off, updated_at, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Open', 0, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Open', 0, ?, ?)
       `,
       [
         cleanName,
@@ -453,6 +480,7 @@ app.post("/api/requests", async (req, res) => {
         cleanDepartment,
         cleanPriority,
         cleanChannel,
+        cleanPhoneNumber || null,
         cleanCategory,
         cleanImpact,
         cleanDetails,
@@ -536,6 +564,7 @@ app.get("/api/requests/:id", async (req, res) => {
           r.department,
           r.priority,
           r.channel,
+          r.contact_phone as contactPhone,
           r.category,
           r.impact,
           r.details,
@@ -843,6 +872,7 @@ app.get("/api/admin/requests", requireAdmin, async (req, res) => {
           r.department,
           r.priority,
           r.channel,
+          r.contact_phone as contactPhone,
           r.category,
           r.impact,
           r.details,
@@ -1219,6 +1249,7 @@ app.get("/api/worker/requests", requireWorker, async (req, res) => {
           r.department,
           r.priority,
           r.channel,
+          r.contact_phone as contactPhone,
           r.category,
           r.impact,
           r.details,
