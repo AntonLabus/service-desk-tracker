@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Service Desk Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <p class="eyebrow">Service Operations</p>
+        <h1>Service Desk Portal</h1>
+      </div>
+      <a class="link-button" href="/admin.html">Open Admin Workspace</a>
+    </div>
+  </header>
+
+  <main class="container page-grid">
+    <section class="card">
+      <h2>Log a New Request</h2>
+      <p class="subtitle">Capture all required details so the right team can triage faster.</p>
+
+      <form id="requestForm" class="stack">
+        <div class="grid cols-2">
+          <label>
+            Full Name
+            <input type="text" id="name" required />
+          </label>
+          <label>
+            Work Email
+            <input type="email" id="email" required />
+          </label>
+          <label>
+            Requesting Department
+            <input type="text" id="department" required />
+          </label>
+          <label>
+            Priority
+            <select id="priority" required>
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+              <option value="Critical">Critical</option>
+            </select>
+          </label>
+          <label>
+            Contact Channel
+            <select id="channel" required>
+              <option value="Phone" selected>Phone</option>
+              <option value="Email">Email</option>
+              <option value="Walk-In">Walk-In</option>
+              <option value="Chat">Chat</option>
+            </select>
+          </label>
+          <label>
+            Category
+            <select id="category" required>
+              <option value="General" selected>General</option>
+              <option value="Access">Access</option>
+              <option value="Hardware">Hardware</option>
+              <option value="Software">Software</option>
+              <option value="Facilities">Facilities</option>
+            </select>
+          </label>
+          <label>
+            Business Impact
+            <select id="impact" required>
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+          </label>
+        </div>
+
+        <label>
+          Request Description
+          <textarea id="details" rows="5" required placeholder="Describe the issue, when it started, and the impact."></textarea>
+        </label>
+
+        <div class="actions">
+          <button type="submit">Create Ticket</button>
+        </div>
+      </form>
+      <p id="statusMessage" class="status"></p>
+    </section>
+
+    <section class="card">
+      <h2>Track Your Ticket</h2>
+      <p class="subtitle">Use ticket key (example: REQ-00012) or numeric ID plus your email.</p>
+
+      <form id="lookupForm" class="grid cols-2">
+        <label>
+          Ticket Reference
+          <input type="text" id="lookupReference" required placeholder="REQ-00012 or 12" />
+        </label>
+        <label>
+          Your Email
+          <input type="email" id="lookupEmail" required />
+        </label>
+        <div class="actions align-end">
+          <button type="submit">Load Ticket</button>
+        </div>
+      </form>
+
+      <p id="lookupStatus" class="status"></p>
+
+      <div id="requestDetails" class="hidden stack">
+        <div class="detail-grid">
+          <p><strong>Ticket</strong><span id="detailTicket"></span></p>
+          <p><strong>State</strong><span id="detailState" class="pill"></span></p>
+          <p><strong>Assigned Team</strong><span id="detailAssignedDept"></span></p>
+          <p><strong>Assigned Person</strong><span id="detailAssignedUser"></span></p>
+          <p><strong>Priority</strong><span id="detailPriority"></span></p>
+          <p><strong>Last Updated</strong><span id="detailUpdated"></span></p>
+        </div>
+
+        <div class="actions">
+          <button id="signOffButton" type="button" class="secondary hidden">Submit Signature Signoff</button>
+          <button id="disputeButton" type="button" class="secondary hidden">Dispute Completion</button>
+        </div>
+
+        <div id="signatureSection" class="hidden stack">
+          <label>
+            Signer Name
+            <input type="text" id="signatureName" placeholder="Full name" />
+          </label>
+          <p class="subtitle">Draw your signature to confirm the work has been completed.</p>
+          <canvas id="signaturePad" width="500" height="160" class="signature-pad"></canvas>
+          <div class="actions">
+            <button id="clearSignatureButton" type="button" class="secondary">Clear Signature</button>
+          </div>
+        </div>
+
+        <div id="disputeSection" class="hidden stack">
+          <label>
+            Dispute Reason
+            <textarea id="disputeReason" rows="3" placeholder="Explain what is still not complete."></textarea>
+          </label>
+        </div>
+
+        <div>
+          <h3>Timeline</h3>
+          <ul id="notificationsList" class="timeline"></ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Workspace - Service Desk</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <p class="eyebrow">Service Operations</p>
+        <h1>Admin Workspace</h1>
+      </div>
+      <a class="link-button" href="/index.html">Open User Portal</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card" id="loginSection">
+      <h2>Admin Login</h2>
+      <form id="loginForm" class="grid cols-2">
+        <label>
+          Password
+          <input type="password" id="adminPassword" required />
+        </label>
+        <div class="actions align-end">
+          <button type="submit">Login</button>
+        </div>
+      </form>
+      <p id="loginStatus" class="status"></p>
+    </section>
+
+    <section class="hidden stack" id="panelSection">
+      <section class="card">
+        <div class="row-between">
+          <h2>Operations Dashboard</h2>
+          <div class="actions">
+            <a class="link-button secondary" href="/worker.html">Worker Panel</a>
+            <button type="button" id="refreshButton" class="secondary">Refresh</button>
+            <button type="button" id="exportButton" class="secondary">Export CSV</button>
+            <button type="button" id="logoutButton" class="secondary">Logout</button>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-card"><strong>Total Tickets</strong><span id="sumTotal">0</span></div>
+          <div class="summary-card"><strong>Open</strong><span id="sumOpen">0</span></div>
+          <div class="summary-card"><strong>Work In Progress</strong><span id="sumWip">0</span></div>
+          <div class="summary-card"><strong>Pending</strong><span id="sumPending">0</span></div>
+          <div class="summary-card"><strong>Awaiting Signoff</strong><span id="sumAwaiting">0</span></div>
+          <div class="summary-card"><strong>Resolved</strong><span id="sumResolved">0</span></div>
+          <div class="summary-card"><strong>Closed</strong><span id="sumClosed">0</span></div>
+          <div class="summary-card"><strong>Avg Assign Time</strong><span id="sumAssign">0m</span></div>
+          <div class="summary-card"><strong>Avg Resolution</strong><span id="sumResolution">0h</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Worker User Management</h3>
+        <p class="subtitle">Only admins can add/remove workers. Only active workers can be assigned requests.</p>
+
+        <form id="workerForm" class="grid cols-4">
+          <label>
+            Full Name
+            <input type="text" id="workerFullName" required />
+          </label>
+          <label>
+            Username
+            <input type="text" id="workerUsername" required placeholder="john.doe" />
+          </label>
+          <label>
+            Department
+            <input type="text" id="workerDepartment" required />
+          </label>
+          <label>
+            Temporary Password
+            <input type="password" id="workerPassword" required minlength="12" />
+          </label>
+          <div class="actions align-end">
+            <button type="submit">Add Worker</button>
+          </div>
+        </form>
+        <p id="workerStatus" class="status"></p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Department</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="workersTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Filters</h3>
+        <div class="grid cols-4 filters">
+          <label>
+            Date From
+            <input type="date" id="filterDateFrom" />
+          </label>
+          <label>
+            Date To
+            <input type="date" id="filterDateTo" />
+          </label>
+          <label>
+            Requester
+            <input type="text" id="filterRequester" placeholder="Name or email" />
+          </label>
+          <label>
+            Assigned Person
+            <select id="filterAssignee">
+              <option value="">All</option>
+            </select>
+          </label>
+          <label>
+            State
+            <select id="filterState">
+              <option value="">All</option>
+              <option value="Open">Open</option>
+              <option value="Work In Progress">Work In Progress</option>
+              <option value="Pending">Pending</option>
+              <option value="Awaiting Signoff">Awaiting Signoff</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </label>
+          <label>
+            Priority
+            <select id="filterPriority">
+              <option value="">All</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Critical">Critical</option>
+            </select>
+          </label>
+          <label>
+            Min Open Hours (Unresolved)
+            <input type="number" min="0" step="1" id="filterMinOpenHours" placeholder="e.g. 24" />
+          </label>
+          <div class="actions align-end">
+            <button type="button" id="applyFiltersButton">Apply</button>
+            <button type="button" id="clearFiltersButton" class="secondary">Reset</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row-between">
+          <h3>View</h3>
+          <div class="actions">
+            <button type="button" id="showTableButton">Table</button>
+            <button type="button" id="showBoardButton" class="secondary">Board</button>
+          </div>
+        </div>
+
+        <p id="panelStatus" class="status"></p>
+
+        <div id="tableView" class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticket</th>
+                <th>Requester</th>
+                <th>Context</th>
+                <th>Status</th>
+                <th>Assignee</th>
+                <th>Timing</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminTableBody"></tbody>
+          </table>
+        </div>
+
+        <div id="boardView" class="hidden board-grid">
+          <div class="board-col">
+            <h4>Open</h4>
+            <div id="colOpen" class="board-list"></div>
+          </div>
+          <div class="board-col">
+            <h4>Work In Progress</h4>
+            <div id="colWip" class="board-list"></div>
+          </div>
+          <div class="board-col">
+            <h4>Pending</h4>
+            <div id="colPending" class="board-list"></div>
+          </div>
+          <div class="board-col">
+            <h4>Awaiting Signoff</h4>
+            <div id="colAwaiting" class="board-list"></div>
+          </div>
+          <div class="board-col">
+            <h4>Resolved</h4>
+            <div id="colResolved" class="board-list"></div>
+          </div>
+          <div class="board-col">
+            <h4>Closed</h4>
+            <div id="colClosed" class="board-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Audit Log (Latest Events)</h3>
+        <p class="subtitle">Security and workflow actions across admin and worker users.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Actor</th>
+                <th>Action</th>
+                <th>Target</th>
+                <th>Metadata</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card hidden" id="signatureViewerSection">
+        <div class="row-between">
+          <h3>Requester Signature</h3>
+          <button type="button" id="closeSignatureViewer" class="secondary">Close</button>
+        </div>
+        <p id="signatureMeta" class="subtitle"></p>
+        <img id="signaturePreview" alt="Requester signature" class="signature-preview" />
+        <div class="actions">
+          <a id="signatureDownloadLink" class="link-button secondary" download="request-signature.png">Download Signature</a>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="admin.js"></script>
+</body>
+</html>

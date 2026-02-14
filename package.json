@@ -1,0 +1,22 @@
+{
+  "name": "new-folder",
+  "version": "1.0.0",
+  "description": "This website lets people log assistance requests and keeps a trackable list of who submitted what.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "echo \"No tests configured\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.1.0",
+    "sqlite3": "^5.1.7"
+  }
+}

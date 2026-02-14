@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worker Panel - Service Desk</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <p class="eyebrow">Service Operations</p>
+        <h1>Worker Panel</h1>
+      </div>
+      <a class="link-button" href="/admin.html">Admin Workspace</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card" id="workerLoginSection">
+      <h2>Worker Login</h2>
+      <form id="workerLoginForm" class="grid cols-2">
+        <label>
+          Username
+          <input type="text" id="workerUsername" required />
+        </label>
+        <label>
+          Password
+          <input type="password" id="workerPassword" required />
+        </label>
+        <div class="actions align-end">
+          <button type="submit">Login</button>
+        </div>
+      </form>
+      <p id="workerLoginStatus" class="status"></p>
+    </section>
+
+    <section class="card hidden" id="workerPasswordSection">
+      <h2>Change Password</h2>
+      <p class="subtitle">For security, you must change your password before accessing assigned requests.</p>
+      <form id="workerPasswordForm" class="grid cols-2">
+        <label>
+          Current Password
+          <input type="password" id="workerCurrentPassword" required />
+        </label>
+        <label>
+          New Password
+          <input type="password" id="workerNewPassword" required minlength="12" />
+        </label>
+        <div class="actions align-end">
+          <button type="submit">Update Password</button>
+        </div>
+      </form>
+      <p id="workerPasswordStatus" class="status"></p>
+    </section>
+
+    <section class="card hidden" id="workerPanelSection">
+      <div class="row-between">
+        <h2 id="workerWelcome">My Assigned Requests</h2>
+        <div class="actions">
+          <button id="workerRefreshButton" type="button" class="secondary">Refresh</button>
+          <button id="workerLogoutButton" type="button" class="secondary">Logout</button>
+        </div>
+      </div>
+      <p id="workerPanelStatus" class="status"></p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Requester</th>
+              <th>Details</th>
+              <th>Status</th>
+              <th>Age</th>
+              <th>Update</th>
+            </tr>
+          </thead>
+          <tbody id="workerRequestsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="worker.js"></script>
+</body>
+</html>
