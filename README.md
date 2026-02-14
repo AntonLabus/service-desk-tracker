@@ -146,6 +146,19 @@ Production requirements:
 
 This app is ready to deploy as a single Render Web Service (frontend + backend together).
 
+### Persistent data on Render free tier (recommended)
+
+Render free instances do not provide persistent local disks, so use Turso (remote SQLite) for durable ticket storage.
+
+Set these environment variables in Render:
+
+- `TURSO_DATABASE_URL=<your-turso-database-url>`
+- `TURSO_AUTH_TOKEN=<your-turso-auth-token>`
+
+When `TURSO_DATABASE_URL` is set, the app stores data remotely in Turso and tickets persist across deploys/restarts.
+
+Without Turso, the app falls back to local SQLite (`SQLITE_PATH`) which is ephemeral on Render free.
+
 ### Option A: Blueprint (recommended)
 
 1. Push this repository to GitHub.
@@ -156,9 +169,10 @@ This app is ready to deploy as a single Render Web Service (frontend + backend t
 5. Set secret environment values in Render:
    - `SESSION_SECRET` (strong random value)
    - `ADMIN_PASSWORD` (strong admin password)
+   - `TURSO_DATABASE_URL`
+   - `TURSO_AUTH_TOKEN`
 
-`SQLITE_PATH` is preconfigured to `/tmp/requests.db` for Render free tier compatibility.
-This storage is ephemeral, so ticket data can be lost on deploy/restart.
+`SQLITE_PATH` is kept for local/non-Turso fallback.
 
 ### Option B: Manual Web Service
 
@@ -171,7 +185,9 @@ If not using Blueprint, create a **Web Service** and set:
   - `NODE_ENV=production`
   - `SESSION_SECRET=<strong-secret>`
   - `ADMIN_PASSWORD=<strong-password>`
-   - `SQLITE_PATH=/tmp/requests.db`
+   - `TURSO_DATABASE_URL=<your-turso-url>`
+   - `TURSO_AUTH_TOKEN=<your-turso-token>`
+   - `SQLITE_PATH=./requests.db` (fallback when Turso is not configured)
 
 After deploy:
 

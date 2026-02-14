@@ -3,6 +3,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
+const { createClient } = require("@libsql/client");
 const session = require("express-session");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -11,12 +12,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const isProduction = process.env.NODE_ENV === "production";
+const useRemoteSqlite = Boolean(process.env.TURSO_DATABASE_URL);
 const dbPath = process.env.SQLITE_PATH || path.join(__dirname, "requests.db");
-const dbDirectory = path.dirname(dbPath);
-if (!fs.existsSync(dbDirectory)) {
-  fs.mkdirSync(dbDirectory, { recursive: true });
+let db = null;
+let remoteDb = null;
+
+if (useRemoteSqlite) {
+  remoteDb = createClient({
+    url: process.env.TURSO_DATABASE_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN || undefined,
+  });
+} else {
+  const dbDirectory = path.dirname(dbPath);
+  if (!fs.existsSync(dbDirectory)) {
+    fs.mkdirSync(dbDirectory, { recursive: true });
+  }
+  db = new sqlite3.Database(dbPath);
 }
-const db = new sqlite3.Database(dbPath);
 const allowedStates = new Set(["Open", "Work In Progress", "Pending", "Awaiting Signoff", "Resolved", "Closed"]);
 const workerUpdatableStates = new Set(["Work In Progress", "Pending", "Awaiting Signoff"]);
 const allowedPriorities = new Set(["Low", "Medium", "High", "Critical"]);
@@ -123,6 +135,13 @@ function destroySession(req) {
 }
 
 function runSql(sql, params = []) {
+  if (useRemoteSqlite) {
+    return remoteDb.execute({ sql, args: params }).then((result) => ({
+      lastID: Number(result.lastInsertRowid || 0),
+      changes: Number(result.rowsAffected || 0),
+    }));
+  }
+
   return new Promise((resolve, reject) => {
     db.run(sql, params, function onRun(error) {
       if (error) {
@@ -135,6 +154,10 @@ function runSql(sql, params = []) {
 }
 
 function getSql(sql, params = []) {
+  if (useRemoteSqlite) {
+    return remoteDb.execute({ sql, args: params }).then((result) => result.rows?.[0] || undefined);
+  }
+
   return new Promise((resolve, reject) => {
     db.get(sql, params, (error, row) => {
       if (error) {
@@ -147,6 +170,10 @@ function getSql(sql, params = []) {
 }
 
 function allSql(sql, params = []) {
+  if (useRemoteSqlite) {
+    return remoteDb.execute({ sql, args: params }).then((result) => result.rows || []);
+  }
+
   return new Promise((resolve, reject) => {
     db.all(sql, params, (error, rows) => {
       if (error) {
@@ -216,8 +243,15 @@ function calculateHoursBetween(startIso, endIso) {
   return (end - start) / (1000 * 60 * 60);
 }
 
-db.serialize(() => {
-  db.run(`
+async function runMigration(sql) {
+  try {
+    await runSql(sql);
+  } catch {
+  }
+}
+
+async function initializeDatabase() {
+  await runSql(`
     CREATE TABLE IF NOT EXISTS requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       ticket_key TEXT UNIQUE,
@@ -264,19 +298,19 @@ db.serialize(() => {
     "ALTER TABLE requests ADD COLUMN impact TEXT DEFAULT 'Medium'",
   ];
 
-  requestMigrations.forEach((statement) => {
-    db.run(statement, () => {});
-  });
+  for (const statement of requestMigrations) {
+    await runMigration(statement);
+  }
 
-  db.run("UPDATE requests SET status = 'Open' WHERE status IS NULL");
-  db.run("UPDATE requests SET requester_signed_off = 0 WHERE requester_signed_off IS NULL");
-  db.run("UPDATE requests SET total_time_spent_minutes = 0 WHERE total_time_spent_minutes IS NULL");
-  db.run("UPDATE requests SET updated_at = created_at WHERE updated_at IS NULL");
-  db.run("UPDATE requests SET channel = 'Phone' WHERE channel IS NULL");
-  db.run("UPDATE requests SET category = 'General' WHERE category IS NULL");
-  db.run("UPDATE requests SET impact = 'Medium' WHERE impact IS NULL");
+  await runSql("UPDATE requests SET status = 'Open' WHERE status IS NULL");
+  await runSql("UPDATE requests SET requester_signed_off = 0 WHERE requester_signed_off IS NULL");
+  await runSql("UPDATE requests SET total_time_spent_minutes = 0 WHERE total_time_spent_minutes IS NULL");
+  await runSql("UPDATE requests SET updated_at = created_at WHERE updated_at IS NULL");
+  await runSql("UPDATE requests SET channel = 'Phone' WHERE channel IS NULL");
+  await runSql("UPDATE requests SET category = 'General' WHERE category IS NULL");
+  await runSql("UPDATE requests SET impact = 'Medium' WHERE impact IS NULL");
 
-  db.run(`
+  await runSql(`
     CREATE TABLE IF NOT EXISTS notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       request_id INTEGER NOT NULL,
@@ -286,7 +320,7 @@ db.serialize(() => {
     )
   `);
 
-  db.run(`
+  await runSql(`
     CREATE TABLE IF NOT EXISTS worker_accounts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       full_name TEXT NOT NULL,
@@ -302,7 +336,7 @@ db.serialize(() => {
     )
   `);
 
-  db.run(`
+  await runSql(`
     CREATE TABLE IF NOT EXISTS audit_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       actor_role TEXT NOT NULL,
@@ -323,14 +357,14 @@ db.serialize(() => {
     "ALTER TABLE worker_accounts ADD COLUMN created_at TEXT",
   ];
 
-  workerMigrations.forEach((statement) => {
-    db.run(statement, () => {});
-  });
+  for (const statement of workerMigrations) {
+    await runMigration(statement);
+  }
 
-  db.run("UPDATE worker_accounts SET is_active = 1 WHERE is_active IS NULL");
-  db.run("UPDATE worker_accounts SET failed_attempts = 0 WHERE failed_attempts IS NULL");
-  db.run("UPDATE worker_accounts SET must_change_password = 1 WHERE must_change_password IS NULL");
-  db.run("UPDATE worker_accounts SET created_at = datetime('now') WHERE created_at IS NULL");
+  await runSql("UPDATE worker_accounts SET is_active = 1 WHERE is_active IS NULL");
+  await runSql("UPDATE worker_accounts SET failed_attempts = 0 WHERE failed_attempts IS NULL");
+  await runSql("UPDATE worker_accounts SET must_change_password = 1 WHERE must_change_password IS NULL");
+  await runSql("UPDATE worker_accounts SET created_at = datetime('now') WHERE created_at IS NULL");
 
   const defaultWorkers = [
     { fullName: "Alex Smith", username: "alex.smith", department: "IT", password: "Temp#1234" },
@@ -341,27 +375,29 @@ db.serialize(() => {
     { fullName: "Riley Kim", username: "riley.kim", department: "Facilities", password: "Temp#1234" },
   ];
 
-  defaultWorkers.forEach((worker) => {
+  for (const worker of defaultWorkers) {
     const { passwordSalt, passwordHash } = createPasswordRecord(worker.password);
-    db.run(
+    await runSql(
       `
         INSERT OR IGNORE INTO worker_accounts (full_name, username, department, password_hash, password_salt, is_active, failed_attempts, locked_until, must_change_password, created_at)
         VALUES (?, ?, ?, ?, ?, 1, 0, NULL, 1, ?)
       `,
       [worker.fullName, worker.username, worker.department, passwordHash, passwordSalt, new Date().toISOString()]
     );
-  });
+  }
 
-  db.all("SELECT id FROM requests WHERE ticket_key IS NULL OR ticket_key = ''", (error, rows) => {
-    if (error || !rows) {
-      return;
-    }
-    rows.forEach((row) => {
-      const key = ticketKeyFromId(row.id);
-      db.run("UPDATE requests SET ticket_key = ? WHERE id = ?", [key, row.id]);
-    });
-  });
-});
+  const rows = await allSql("SELECT id FROM requests WHERE ticket_key IS NULL OR ticket_key = ''");
+  for (const row of rows) {
+    const key = ticketKeyFromId(row.id);
+    await runSql("UPDATE requests SET ticket_key = ? WHERE id = ?", [key, row.id]);
+  }
+
+  if (useRemoteSqlite) {
+    console.log("Using Turso remote SQLite for persistent data.");
+  } else {
+    console.log(`Using local SQLite database at ${dbPath}.`);
+  }
+}
 
 if (!process.env.SESSION_SECRET) {
   console.warn("SESSION_SECRET is not set. Set a strong secret in production.");
@@ -1434,6 +1470,13 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Assistance tracker running on http://localhost:${PORT}`);
-});
+initializeDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Assistance tracker running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Failed to initialize database.", error);
+    process.exit(1);
+  });

@@ -13,5 +13,9 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       - key: SQLITE_PATH
-        value: /tmp/requests.db
+        value: ./requests.db
