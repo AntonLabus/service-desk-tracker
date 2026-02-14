@@ -60,6 +60,22 @@ function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
+function asArray(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (value && Array.isArray(value.rows)) {
+    return value.rows;
+  }
+  if (value && Array.isArray(value.requests)) {
+    return value.requests;
+  }
+  if (value && Array.isArray(value.items)) {
+    return value.items;
+  }
+  return [];
+}
+
 function isResolvedState(status) {
   return status === "Resolved" || status === "Closed";
 }
@@ -167,11 +183,13 @@ async function loadDepartments() {
 }
 
 async function loadAuditLogs() {
-  auditLogsCache = await fetchJson("/api/admin/audit-logs?limit=120");
+  const data = await fetchJson("/api/admin/audit-logs?limit=120");
+  auditLogsCache = asArray(data);
 }
 
 async function loadRequests() {
-  return fetchJson("/api/admin/requests");
+  const data = await fetchJson("/api/admin/requests");
+  return asArray(data);
 }
 
 async function loadMetrics() {
@@ -221,8 +239,9 @@ function statusOptions(selectedStatus) {
 }
 
 function updateAssigneeFilterOptions(requests) {
+  const safeRequests = asArray(requests);
   const currentValue = filterAssignee.value;
-  const assignees = [...new Set(requests.map((request) => request.assignedUserName || request.assignedUser).filter(Boolean))]
+  const assignees = [...new Set(safeRequests.map((request) => request?.assignedUserName || request?.assignedUser).filter(Boolean))]
     .sort((left, right) => left.localeCompare(right));
 
   filterAssignee.innerHTML = '<option value="">All</option>';
@@ -239,6 +258,7 @@ function updateAssigneeFilterOptions(requests) {
 }
 
 function applyFilters(requests) {
+  const safeRequests = asArray(requests);
   const fromDate = filterDateFrom.value ? new Date(`${filterDateFrom.value}T00:00:00`).getTime() : null;
   const toDate = filterDateTo.value ? new Date(`${filterDateTo.value}T23:59:59`).getTime() : null;
   const requesterText = filterRequester.value.trim().toLowerCase();
@@ -247,7 +267,7 @@ function applyFilters(requests) {
   const priority = filterPriority.value;
   const minOpenHours = Number.parseFloat(filterMinOpenHours.value || "0");
 
-  return requests.filter((request) => {
+  return safeRequests.filter((request) => {
     const createdAtMs = new Date(request.createdAt).getTime();
     if (fromDate && createdAtMs < fromDate) {
       return false;
@@ -287,15 +307,16 @@ function applyFilters(requests) {
 }
 
 function renderSummaryFromMetrics(metrics) {
-  sumTotal.textContent = String(metrics.total || 0);
-  sumOpen.textContent = String(metrics.stateCounts?.Open || 0);
-  sumWip.textContent = String(metrics.stateCounts?.["Work In Progress"] || 0);
-  sumPending.textContent = String(metrics.stateCounts?.Pending || 0);
-  sumAwaiting.textContent = String(metrics.stateCounts?.["Awaiting Signoff"] || 0);
-  sumResolved.textContent = String(metrics.stateCounts?.Resolved || 0);
-  sumClosed.textContent = String(metrics.stateCounts?.Closed || 0);
-  sumAssign.textContent = `${metrics.avgAssignmentMinutes || 0}m`;
-  sumResolution.textContent = `${metrics.avgResolutionHours || 0}h`;
+  const safeMetrics = metrics || {};
+  sumTotal.textContent = String(safeMetrics.total || 0);
+  sumOpen.textContent = String(safeMetrics.stateCounts?.Open || 0);
+  sumWip.textContent = String(safeMetrics.stateCounts?.["Work In Progress"] || 0);
+  sumPending.textContent = String(safeMetrics.stateCounts?.Pending || 0);
+  sumAwaiting.textContent = String(safeMetrics.stateCounts?.["Awaiting Signoff"] || 0);
+  sumResolved.textContent = String(safeMetrics.stateCounts?.Resolved || 0);
+  sumClosed.textContent = String(safeMetrics.stateCounts?.Closed || 0);
+  sumAssign.textContent = `${safeMetrics.avgAssignmentMinutes || 0}m`;
+  sumResolution.textContent = `${safeMetrics.avgResolutionHours || 0}h`;
 }
 
 function renderAuditLogs() {
@@ -322,9 +343,10 @@ function renderAuditLogs() {
 }
 
 function renderRows(requests) {
+  const safeRequests = asArray(requests);
   adminTableBody.innerHTML = "";
 
-  if (requests.length === 0) {
+  if (safeRequests.length === 0) {
     const row = document.createElement("tr");
     row.innerHTML = '<td colspan="7" class="empty">No requests found for this filter set.</td>';
     adminTableBody.appendChild(row);
@@ -333,7 +355,7 @@ function renderRows(requests) {
 
   let renderedCount = 0;
 
-  requests.forEach((request) => {
+  safeRequests.forEach((request) => {
     const row = document.createElement("tr");
     try {
       const availableDepartments = Object.keys(departments);
@@ -424,6 +446,7 @@ function renderRows(requests) {
 }
 
 function renderBoard(requests) {
+  const safeRequests = asArray(requests);
   const columns = {
     Open: colOpen,
     "Work In Progress": colWip,
@@ -437,7 +460,7 @@ function renderBoard(requests) {
     column.innerHTML = "";
   });
 
-  requests.forEach((request) => {
+  safeRequests.forEach((request) => {
     const target = columns[request.status] || colOpen;
     const card = document.createElement("article");
     card.className = `board-card ${slaClass(request)}`;
@@ -492,7 +515,7 @@ async function refreshPanel() {
   }
 
   if (auditResult.status === "fulfilled") {
-    auditLogsCache = auditResult.value;
+    auditLogsCache = asArray(auditResult.value);
     renderAuditLogs();
   } else {
     auditLogsCache = [];
@@ -500,7 +523,7 @@ async function refreshPanel() {
   }
 
   if (requestsResult.status === "fulfilled") {
-    requestsCache = requestsResult.value;
+    requestsCache = asArray(requestsResult.value);
     updateAssigneeFilterOptions(requestsCache);
     let filtered = applyFilters(requestsCache);
 
