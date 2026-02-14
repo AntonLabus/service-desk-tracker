@@ -292,6 +292,7 @@ textarea:focus-visible {
 
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -531,6 +532,10 @@ td {
     grid-template-columns: 1fr;
   }
 
+  .board-grid {
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+  }
+
   .cols-4,
   .summary-grid,
   .detail-grid {
@@ -539,10 +544,28 @@ td {
 }
 
 @media (max-width: 720px) {
+  body {
+    font-size: 14px;
+  }
+
+  .container {
+    padding: 0.8rem;
+  }
+
   .topbar-inner,
   .row-between {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .topbar-inner .actions {
+    width: 100%;
+  }
+
+  .topbar-inner .actions .link-button,
+  .topbar-inner .actions button {
+    width: 100%;
+    justify-content: center;
   }
 
   .cols-2,
@@ -550,5 +573,53 @@ td {
   .summary-grid,
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .summary-card span {
+    font-size: 1.02rem;
+  }
+
+  .board-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #panelSection,
+  #wmPanelSection,
+  #workerPanelSection {
+    font-size: 0.88rem;
+  }
+
+  #panelSection .card,
+  #wmPanelSection.card,
+  #workerPanelSection.card,
+  .card {
+    padding: 0.68rem;
+  }
+
+  #panelSection table,
+  #wmPanelSection table,
+  #workerPanelSection table {
+    min-width: 780px;
+  }
+
+  #panelSection th,
+  #panelSection td,
+  #wmPanelSection th,
+  #wmPanelSection td,
+  #workerPanelSection th,
+  #workerPanelSection td {
+    padding: 0.38rem;
+    font-size: 0.82rem;
+  }
+
+  #panelSection button,
+  #wmPanelSection button,
+  #workerPanelSection button,
+  #panelSection .link-button,
+  #wmPanelSection .link-button,
+  #workerPanelSection .link-button {
+    min-height: 28px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.78rem;
   }
 }
