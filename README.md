@@ -140,3 +140,41 @@ Production requirements:
 - On first login, worker must change password before seeing assigned requests
 - Failed logins trigger temporary account lockout
 - Admin can review lockouts and security events in the audit log panel
+
+## Deploy on Render
+
+This app is ready to deploy as a single Render Web Service (frontend + backend together).
+
+### Option A: Blueprint (recommended)
+
+1. Push this repository to GitHub.
+2. In Render, click **New** -> **Blueprint**.
+3. Select this repository.
+4. Render will detect `render.yaml` and create:
+   - Web service (`service-desk-tracker`)
+   - Persistent disk mounted at `/var/data`
+5. Set secret environment values in Render:
+   - `SESSION_SECRET` (strong random value)
+   - `ADMIN_PASSWORD` (strong admin password)
+
+`SQLITE_PATH` is preconfigured to `/var/data/requests.db` so data survives deploys/restarts.
+
+### Option B: Manual Web Service
+
+If not using Blueprint, create a **Web Service** and set:
+
+- Build command: `npm install`
+- Start command: `npm start`
+- Environment: `Node`
+- Add persistent disk mounted at `/var/data` (1 GB is enough to start)
+- Environment variables:
+  - `NODE_ENV=production`
+  - `SESSION_SECRET=<strong-secret>`
+  - `ADMIN_PASSWORD=<strong-password>`
+  - `SQLITE_PATH=/var/data/requests.db`
+
+After deploy:
+
+- Portal: `https://<your-render-url>/`
+- Admin: `https://<your-render-url>/admin.html`
+- Worker: `https://<your-render-url>/worker.html`

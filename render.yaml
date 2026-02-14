@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: service-desk-tracker
+    env: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SQLITE_PATH
+        value: /var/data/requests.db
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1

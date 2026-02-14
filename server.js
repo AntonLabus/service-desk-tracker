@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require("fs");
 const crypto = require("crypto");
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
@@ -10,7 +11,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const isProduction = process.env.NODE_ENV === "production";
-const dbPath = path.join(__dirname, "requests.db");
+const dbPath = process.env.SQLITE_PATH || path.join(__dirname, "requests.db");
+const dbDirectory = path.dirname(dbPath);
+if (!fs.existsSync(dbDirectory)) {
+  fs.mkdirSync(dbDirectory, { recursive: true });
+}
 const db = new sqlite3.Database(dbPath);
 const allowedStates = new Set(["Open", "Work In Progress", "Pending", "Awaiting Signoff", "Resolved", "Closed"]);
 const workerUpdatableStates = new Set(["Work In Progress", "Pending", "Awaiting Signoff"]);
