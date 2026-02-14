@@ -194,6 +194,14 @@ async function deactivateWorker(workerId) {
   }
 }
 
+async function removeWorker(workerId) {
+  const response = await fetch(`/api/admin/workers/${workerId}/permanent`, { method: "DELETE" });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to remove worker permanently.");
+  }
+}
+
 async function loadRequests() {
   return fetchJson("/api/admin/requests");
 }
@@ -348,7 +356,10 @@ function renderWorkersTable() {
       <td>${escapeHtml(worker.department)}</td>
       <td>${escapeHtml(status)}</td>
       <td>
-        ${worker.isActive ? `<button type="button" class="secondary" data-role="deactivate-worker" data-id="${worker.id}">Deactivate</button>` : "-"}
+        <div class="actions compact">
+          ${worker.isActive ? `<button type="button" class="secondary" data-role="deactivate-worker" data-id="${worker.id}">Deactivate</button>` : ""}
+          <button type="button" class="secondary" data-role="remove-worker" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Remove</button>
+        </div>
       </td>
     `;
     workersTableBody.appendChild(row);
@@ -661,6 +672,21 @@ workersTableBody.addEventListener("click", async (event) => {
     try {
       await deactivateWorker(button.dataset.id);
       workerStatus.textContent = "Worker deactivated.";
+      await refreshPanel();
+    } catch (error) {
+      workerStatus.textContent = error.message;
+    }
+  }
+
+  if (button.dataset.role === "remove-worker") {
+    const confirmed = window.confirm(`Remove worker ${button.dataset.username || ""} permanently? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await removeWorker(button.dataset.id);
+      workerStatus.textContent = "Worker removed permanently.";
       await refreshPanel();
     } catch (error) {
       workerStatus.textContent = error.message;

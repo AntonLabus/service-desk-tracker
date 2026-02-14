@@ -831,6 +831,46 @@ app.delete("/api/admin/workers/:id", requireAdmin, async (req, res) => {
   }
 });
 
+app.delete("/api/admin/workers/:id/permanent", requireAdmin, async (req, res) => {
+  const workerId = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(workerId) || workerId <= 0) {
+    res.status(400).json({ error: "Valid worker ID is required." });
+    return;
+  }
+
+  try {
+    const worker = await getSql(
+      "SELECT username, full_name as fullName FROM worker_accounts WHERE id = ?",
+      [workerId]
+    );
+    if (!worker) {
+      res.status(404).json({ error: "Worker not found." });
+      return;
+    }
+
+    const activeAssignments = await getSql(
+      `
+        SELECT COUNT(1) as activeCount
+        FROM requests
+        WHERE (assigned_user = ? OR assigned_user = ?)
+          AND status NOT IN ('Resolved', 'Closed')
+      `,
+      [worker.username, worker.fullName]
+    );
+
+    if (Number(activeAssignments?.activeCount || 0) > 0) {
+      res.status(409).json({ error: "Reassign this worker's open tickets before removing them." });
+      return;
+    }
+
+    await runSql("DELETE FROM worker_accounts WHERE id = ?", [workerId]);
+    await addRequestAudit(req, "worker_removed", "worker", worker.username);
+    res.status(204).end();
+  } catch {
+    res.status(500).json({ error: "Failed to remove worker." });
+  }
+});
+
 app.get("/api/admin/departments", requireAdmin, async (req, res) => {
   try {
     const rows = await allSql(
