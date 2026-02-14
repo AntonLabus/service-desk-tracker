@@ -40,8 +40,6 @@
         <div class="row-between">
           <h2>Operations Dashboard</h2>
           <div class="actions">
-            <a class="link-button secondary" href="/worker-management.html">Manage Workers</a>
-            <a class="link-button secondary" href="/worker.html">Worker Panel</a>
             <button type="button" id="refreshButton" class="secondary">Refresh</button>
             <button type="button" id="exportButton" class="secondary">Export CSV</button>
             <button type="button" id="logoutButton" class="secondary">Logout</button>
@@ -58,49 +56,6 @@
           <div class="summary-card"><strong>Closed</strong><span id="sumClosed">0</span></div>
           <div class="summary-card"><strong>Avg Assign Time</strong><span id="sumAssign">0m</span></div>
           <div class="summary-card"><strong>Avg Resolution</strong><span id="sumResolution">0h</span></div>
-        </div>
-      </section>
-
-      <section class="card">
-        <h3>Worker User Management</h3>
-        <p class="subtitle">Only admins can add, reset passwords, deactivate, or remove workers. Workers with open assigned tickets must be reassigned before permanent removal.</p>
-
-        <form id="workerForm" class="grid cols-4">
-          <label>
-            Full Name
-            <input type="text" id="workerFullName" required />
-          </label>
-          <label>
-            Username
-            <input type="text" id="workerUsername" required placeholder="john.doe" />
-          </label>
-          <label>
-            Department
-            <input type="text" id="workerDepartment" required />
-          </label>
-          <label>
-            Temporary Password
-            <input type="password" id="workerPassword" required minlength="12" />
-          </label>
-          <div class="actions align-end">
-            <button type="submit">Add Worker</button>
-          </div>
-        </form>
-        <p id="workerStatus" class="status"></p>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Username</th>
-                <th>Department</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="workersTableBody"></tbody>
-          </table>
         </div>
       </section>
 

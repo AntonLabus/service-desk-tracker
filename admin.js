@@ -3,11 +3,8 @@ const panelSection = document.getElementById("panelSection");
 const loginForm = document.getElementById("loginForm");
 const loginStatus = document.getElementById("loginStatus");
 const panelStatus = document.getElementById("panelStatus");
-const workerStatus = document.getElementById("workerStatus");
 const adminTableBody = document.getElementById("adminTableBody");
-const workersTableBody = document.getElementById("workersTableBody");
 const auditTableBody = document.getElementById("auditTableBody");
-const workerForm = document.getElementById("workerForm");
 const signatureViewerSection = document.getElementById("signatureViewerSection");
 const closeSignatureViewer = document.getElementById("closeSignatureViewer");
 const signatureMeta = document.getElementById("signatureMeta");
@@ -51,7 +48,6 @@ const colClosed = document.getElementById("colClosed");
 
 let departments = {};
 let requestsCache = [];
-let workersCache = [];
 let auditLogsCache = [];
 let activeView = "table";
 
@@ -170,44 +166,8 @@ async function loadDepartments() {
   departments = await fetchJson("/api/admin/departments");
 }
 
-async function loadWorkers() {
-  workersCache = await fetchJson("/api/admin/workers");
-}
-
 async function loadAuditLogs() {
   auditLogsCache = await fetchJson("/api/admin/audit-logs?limit=120");
-}
-
-async function createWorker(payload) {
-  return fetchJson("/api/admin/workers", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-}
-
-async function deactivateWorker(workerId) {
-  const response = await fetch(`/api/admin/workers/${workerId}`, { method: "DELETE" });
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || "Failed to remove worker.");
-  }
-}
-
-async function removeWorker(workerId) {
-  const response = await fetch(`/api/admin/workers/${workerId}/permanent`, { method: "DELETE" });
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || "Failed to remove worker permanently.");
-  }
-}
-
-async function resetWorkerPassword(workerId, newPassword) {
-  return fetchJson(`/api/admin/workers/${workerId}/reset-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ newPassword }),
-  });
 }
 
 async function loadRequests() {
@@ -338,43 +298,6 @@ function renderSummaryFromMetrics(metrics) {
   sumResolution.textContent = `${metrics.avgResolutionHours || 0}h`;
 }
 
-function renderWorkersTable() {
-  workersTableBody.innerHTML = "";
-
-  if (workersCache.length === 0) {
-    const row = document.createElement("tr");
-    row.innerHTML = '<td colspan="5" class="empty">No workers configured.</td>';
-    workersTableBody.appendChild(row);
-    return;
-  }
-
-  workersCache.forEach((worker) => {
-    const row = document.createElement("tr");
-    const statusParts = [worker.isActive ? "Active" : "Inactive"];
-    if (worker.lockedUntil) {
-      statusParts.push(`Locked until ${formatDate(worker.lockedUntil)}`);
-    }
-    if (worker.mustChangePassword) {
-      statusParts.push("Password change required");
-    }
-    const status = statusParts.join(" · ");
-    row.innerHTML = `
-      <td>${escapeHtml(worker.fullName)}</td>
-      <td>${escapeHtml(worker.username)}</td>
-      <td>${escapeHtml(worker.department)}</td>
-      <td>${escapeHtml(status)}</td>
-      <td>
-        <div class="actions compact">
-          <button type="button" data-role="reset-worker-password" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Reset Password</button>
-          ${worker.isActive ? `<button type="button" class="secondary" data-role="deactivate-worker" data-id="${worker.id}">Deactivate</button>` : ""}
-          <button type="button" class="secondary" data-role="remove-worker" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Remove</button>
-        </div>
-      </td>
-    `;
-    workersTableBody.appendChild(row);
-  });
-}
-
 function renderAuditLogs() {
   auditTableBody.innerHTML = "";
 
@@ -411,12 +334,13 @@ function renderRows(requests) {
   requests.forEach((request) => {
     const row = document.createElement("tr");
     const availableDepartments = Object.keys(departments);
+    const safeStatus = String(request.status || "Open");
     const requestedDepartment = request.assignedDepartment || request.department;
     const department = availableDepartments.includes(requestedDepartment)
       ? requestedDepartment
       : (availableDepartments[0] || "");
     const selectableStatuses = new Set(["Work In Progress", "Pending", "Awaiting Signoff"]);
-    const currentStatus = selectableStatuses.has(request.status) ? request.status : "Work In Progress";
+    const currentStatus = selectableStatuses.has(safeStatus) ? safeStatus : "Work In Progress";
     const canViewSignature = hasRequesterSignoff(request);
 
     row.innerHTML = `
@@ -435,7 +359,7 @@ function renderRows(requests) {
         Cat: ${escapeHtml(request.category || "-")} / Impact: ${escapeHtml(request.impact || "-")}
       </td>
       <td>
-        <span class="pill state-${escapeHtml(request.status.replace(/\s+/g, "-").toLowerCase())}">${escapeHtml(request.status)}</span>
+        <span class="pill state-${escapeHtml(safeStatus.replace(/\s+/g, "-").toLowerCase())}">${escapeHtml(safeStatus)}</span>
       </td>
       <td>${escapeHtml(request.assignedDepartment || "-")} / ${escapeHtml(request.assignedUserName || request.assignedUser || "-")}</td>
       <td>
@@ -535,23 +459,12 @@ function updateViewButtons() {
 }
 
 async function refreshPanel() {
-  const [requestsResult, metricsResult, workersResult, departmentsResult, auditResult] = await Promise.allSettled([
+  const [requestsResult, metricsResult, departmentsResult, auditResult] = await Promise.allSettled([
     loadRequests(),
     loadMetrics(),
-    loadWorkers(),
     loadDepartments(),
     loadAuditLogs(),
   ]);
-
-  if (workersResult.status === "fulfilled") {
-    workersCache = workersResult.value;
-    renderWorkersTable();
-    workerStatus.textContent = `Loaded ${workersCache.length} worker(s).`;
-  } else {
-    workersCache = [];
-    renderWorkersTable();
-    workerStatus.textContent = `Failed to load workers: ${workersResult.reason?.message || "Unknown error."}`;
-  }
 
   if (departmentsResult.status === "fulfilled") {
     departments = departmentsResult.value || {};
@@ -687,74 +600,6 @@ clearFiltersButton.addEventListener("click", () => {
   renderRows(filtered);
   renderBoard(filtered);
   panelStatus.textContent = "Filters reset.";
-});
-
-workerForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  const payload = {
-    fullName: document.getElementById("workerFullName").value.trim(),
-    username: document.getElementById("workerUsername").value.trim().toLowerCase(),
-    department: document.getElementById("workerDepartment").value.trim(),
-    password: document.getElementById("workerPassword").value,
-  };
-
-  try {
-    await createWorker(payload);
-    workerForm.reset();
-    workerStatus.textContent = `Worker ${payload.username} added.`;
-    await refreshPanel();
-  } catch (error) {
-    workerStatus.textContent = error.message;
-  }
-});
-
-workersTableBody.addEventListener("click", async (event) => {
-  const button = event.target.closest("button");
-  if (!button) {
-    return;
-  }
-
-  if (button.dataset.role === "deactivate-worker") {
-    try {
-      await deactivateWorker(button.dataset.id);
-      workerStatus.textContent = "Worker deactivated.";
-      await refreshPanel();
-    } catch (error) {
-      workerStatus.textContent = error.message;
-    }
-  }
-
-  if (button.dataset.role === "remove-worker") {
-    const confirmed = window.confirm(`Remove worker ${button.dataset.username || ""} permanently? This cannot be undone.`);
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await removeWorker(button.dataset.id);
-      workerStatus.textContent = "Worker removed permanently.";
-      await refreshPanel();
-    } catch (error) {
-      workerStatus.textContent = error.message;
-    }
-  }
-
-  if (button.dataset.role === "reset-worker-password") {
-    const username = button.dataset.username || "this worker";
-    const newPassword = window.prompt(`Enter a new temporary password for ${username}.\nMust be at least 12 chars with upper, lower, number, and symbol.`);
-    if (!newPassword) {
-      return;
-    }
-
-    try {
-      await resetWorkerPassword(button.dataset.id, newPassword);
-      workerStatus.textContent = `Password reset for ${username}. Worker must change password on next login.`;
-      await refreshPanel();
-    } catch (error) {
-      workerStatus.textContent = error.message;
-    }
-  }
 });
 
 closeSignatureViewer.addEventListener("click", () => {
