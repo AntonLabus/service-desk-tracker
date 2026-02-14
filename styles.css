@@ -23,7 +23,10 @@
 body {
   margin: 0;
   font-family: "Segoe UI", Arial, sans-serif;
-  background: radial-gradient(circle at 20% 0%, #183a8f 0%, #0b1f54 28%, #071333 55%, #050a1c 100%);
+  background-image: url("/background-data-overlay.svg"), radial-gradient(circle at 20% 0%, #183a8f 0%, #0b1f54 28%, #071333 55%, #050a1c 100%);
+  background-size: cover, cover;
+  background-position: center top, center;
+  background-repeat: no-repeat, no-repeat;
   background-attachment: fixed;
   color: var(--text);
 }

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" fill="none">
+  <defs>
+    <linearGradient id="scanline" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9DC0FF" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#9DC0FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7ED1FF" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#7ED1FF" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="microGrid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M 28 0 L 0 0 0 28" stroke="#B8D3FF" stroke-opacity="0.09" stroke-width="1"/>
+    </pattern>
+    <pattern id="majorGrid" width="140" height="140" patternUnits="userSpaceOnUse">
+      <path d="M 140 0 L 0 0 0 140" stroke="#D4E4FF" stroke-opacity="0.12" stroke-width="1.2"/>
+    </pattern>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#microGrid)"/>
+  <rect width="1920" height="1080" fill="url(#majorGrid)"/>
+
+  <g opacity="0.55" filter="url(#softGlow)">
+    <path d="M 0 170 H 1920" stroke="#A9CAFF" stroke-opacity="0.15"/>
+    <path d="M 0 530 H 1920" stroke="#A9CAFF" stroke-opacity="0.12"/>
+    <path d="M 0 890 H 1920" stroke="#A9CAFF" stroke-opacity="0.1"/>
+
+    <path d="M 190 0 V 1080" stroke="#A9CAFF" stroke-opacity="0.1"/>
+    <path d="M 980 0 V 1080" stroke="#A9CAFF" stroke-opacity="0.1"/>
+    <path d="M 1710 0 V 1080" stroke="#A9CAFF" stroke-opacity="0.08"/>
+  </g>
+
+  <g opacity="0.72" filter="url(#softGlow)">
+    <path d="M 70 320 C 310 220, 520 390, 760 285 C 1000 180, 1235 375, 1480 290 C 1630 240, 1770 260, 1920 210"
+      stroke="#9FD2FF" stroke-opacity="0.24" stroke-width="1.6"/>
+    <path d="M 0 770 C 260 660, 560 860, 820 760 C 1120 645, 1430 860, 1920 680"
+      stroke="#8CC6FF" stroke-opacity="0.18" stroke-width="1.4"/>
+  </g>
+
+  <g fill="none" stroke="#D4E8FF" stroke-width="1.1" stroke-opacity="0.22" filter="url(#softGlow)">
+    <circle cx="1520" cy="240" r="82"/>
+    <circle cx="1520" cy="240" r="112" stroke-opacity="0.16"/>
+    <circle cx="1520" cy="240" r="145" stroke-opacity="0.11"/>
+
+    <circle cx="350" cy="815" r="74"/>
+    <circle cx="350" cy="815" r="108" stroke-opacity="0.14"/>
+  </g>
+
+  <g opacity="0.4">
+    <rect x="1280" y="116" width="500" height="250" rx="14" stroke="#D5E8FF" stroke-opacity="0.2"/>
+    <rect x="94" y="676" width="560" height="284" rx="14" stroke="#D5E8FF" stroke-opacity="0.16"/>
+    <rect x="910" y="690" width="790" height="290" rx="14" stroke="#D5E8FF" stroke-opacity="0.14"/>
+  </g>
+
+  <g opacity="0.5" filter="url(#softGlow)">
+    <rect x="0" y="0" width="1920" height="2" fill="url(#scanline)"/>
+    <rect x="0" y="180" width="1920" height="2" fill="url(#scanline)"/>
+    <rect x="0" y="360" width="1920" height="2" fill="url(#scanline)"/>
+    <rect x="0" y="540" width="1920" height="2" fill="url(#scanline)"/>
+    <rect x="0" y="720" width="1920" height="2" fill="url(#scanline)"/>
+    <rect x="0" y="900" width="1920" height="2" fill="url(#scanline)"/>
+  </g>
+
+  <path d="M 0 0 L 420 0 L 0 420 Z" fill="url(#beam)"/>
+  <path d="M 1920 1080 L 1450 1080 L 1920 610 Z" fill="url(#beam)" opacity="0.7"/>
+</svg>
