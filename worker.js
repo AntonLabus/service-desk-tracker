@@ -33,6 +33,19 @@ function formatAge(createdAt) {
   return `${days}d ${hours}h ${minutes}m`;
 }
 
+function formatMinutes(totalMinutesValue) {
+  const totalMinutes = Number.parseInt(String(totalMinutesValue || 0), 10);
+  if (!Number.isInteger(totalMinutes) || totalMinutes <= 0) {
+    return "0m";
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) {
+    return `${minutes}m`;
+  }
+  return `${hours}h ${minutes}m`;
+}
+
 async function fetchJson(url, options) {
   const response = await fetch(url, options);
   const body = await response.json().catch(() => ({}));
@@ -91,11 +104,11 @@ async function loadWorkerRequests() {
   return fetchJson("/api/worker/requests");
 }
 
-async function updateWorkerRequestStatus(requestId, status, note) {
+async function updateWorkerRequestStatus(requestId, status, note, timeSpentMinutes) {
   return fetchJson(`/api/worker/requests/${requestId}/status`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status, note }),
+    body: JSON.stringify({ status, note, timeSpentMinutes }),
   });
 }
 
@@ -136,11 +149,15 @@ function renderRequests(requests) {
       <td>${escapeHtml(request.name)}<br>${escapeHtml(request.email)}</td>
       <td>${escapeHtml(request.details)}<br><small>${escapeHtml(request.department)} · ${escapeHtml(request.priority)} · ${escapeHtml(request.category || "General")}</small></td>
       <td><span class="pill state-${escapeHtml(request.status.replace(/\s+/g, "-").toLowerCase())}">${escapeHtml(request.status)}</span></td>
-      <td>${escapeHtml(formatAge(request.createdAt))}<br><small>${escapeHtml(formatDate(request.updatedAt))}</small></td>
+      <td>${escapeHtml(formatAge(request.createdAt))}<br><small>${escapeHtml(formatDate(request.updatedAt))}</small><br><small>Total time: ${escapeHtml(formatMinutes(request.totalTimeSpentMinutes))}</small></td>
       <td>
         <label>
           Next State
           <select data-role="status" data-id="${request.id}">${statusOptions(currentStatus)}</select>
+        </label>
+        <label>
+          Minutes Spent
+          <input type="number" min="0" max="1440" step="1" data-role="time-spent" data-id="${request.id}" value="0" />
         </label>
         <label>
           Note
@@ -231,9 +248,11 @@ workerRequestsBody.addEventListener("click", async (event) => {
   const requestId = button.dataset.id;
   const status = workerRequestsBody.querySelector(`select[data-role='status'][data-id='${requestId}']`).value;
   const note = workerRequestsBody.querySelector(`input[data-role='note'][data-id='${requestId}']`).value;
+  const timeSpent = workerRequestsBody.querySelector(`input[data-role='time-spent'][data-id='${requestId}']`).value;
+  const timeSpentMinutes = Number.parseInt(timeSpent || "0", 10);
 
   try {
-    await updateWorkerRequestStatus(requestId, status, note);
+    await updateWorkerRequestStatus(requestId, status, note, Number.isInteger(timeSpentMinutes) ? timeSpentMinutes : 0);
     workerPanelStatus.textContent = `Request #${requestId} updated to ${status}.`;
     await refreshWorkerPanel();
   } catch (error) {

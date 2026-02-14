@@ -92,6 +92,19 @@ function formatDuration(request) {
   return `${prefix} ${days}d ${hours}h ${minutes}m`;
 }
 
+function formatTrackedMinutes(totalMinutesValue) {
+  const totalMinutes = Number.parseInt(String(totalMinutesValue || 0), 10);
+  if (!Number.isInteger(totalMinutes) || totalMinutes <= 0) {
+    return "0m";
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) {
+    return `${minutes}m`;
+  }
+  return `${hours}h ${minutes}m`;
+}
+
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : "-";
 }
@@ -403,7 +416,8 @@ function renderRows(requests) {
       <td>${escapeHtml(request.assignedDepartment || "-")} / ${escapeHtml(request.assignedUserName || request.assignedUser || "-")}</td>
       <td>
         <span class="pill ${slaClass(request)}">${formatDuration(request)}</span><br>
-        Created: ${escapeHtml(formatDate(request.createdAt))}
+        Created: ${escapeHtml(formatDate(request.createdAt))}<br>
+        <small>Time logged: ${escapeHtml(formatTrackedMinutes(request.totalTimeSpentMinutes))}</small>
       </td>
       <td>
         <label>
@@ -465,6 +479,7 @@ function renderBoard(requests) {
       <span>${escapeHtml(request.name)}</span>
       <span>${escapeHtml(request.priority)} · ${escapeHtml(request.category || "General")}</span>
       <span>${escapeHtml(request.assignedUserName || request.assignedUser || "Unassigned")}</span>
+      <span>Time logged: ${escapeHtml(formatTrackedMinutes(request.totalTimeSpentMinutes))}</span>
       <span>${escapeHtml(formatDuration(request))}</span>
     `;
     target.appendChild(card);

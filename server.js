@@ -230,6 +230,7 @@ db.serialize(() => {
       assigned_user TEXT,
       assigned_at TEXT,
       resolved_at TEXT,
+      total_time_spent_minutes INTEGER NOT NULL DEFAULT 0,
       requester_signed_off INTEGER NOT NULL DEFAULT 0,
       requester_signature TEXT,
       requester_signed_off_name TEXT,
@@ -246,6 +247,7 @@ db.serialize(() => {
     "ALTER TABLE requests ADD COLUMN assigned_user TEXT",
     "ALTER TABLE requests ADD COLUMN assigned_at TEXT",
     "ALTER TABLE requests ADD COLUMN resolved_at TEXT",
+    "ALTER TABLE requests ADD COLUMN total_time_spent_minutes INTEGER DEFAULT 0",
     "ALTER TABLE requests ADD COLUMN requester_signed_off INTEGER DEFAULT 0",
     "ALTER TABLE requests ADD COLUMN requester_signature TEXT",
     "ALTER TABLE requests ADD COLUMN requester_signed_off_name TEXT",
@@ -262,6 +264,7 @@ db.serialize(() => {
 
   db.run("UPDATE requests SET status = 'Open' WHERE status IS NULL");
   db.run("UPDATE requests SET requester_signed_off = 0 WHERE requester_signed_off IS NULL");
+  db.run("UPDATE requests SET total_time_spent_minutes = 0 WHERE total_time_spent_minutes IS NULL");
   db.run("UPDATE requests SET updated_at = created_at WHERE updated_at IS NULL");
   db.run("UPDATE requests SET channel = 'Phone' WHERE channel IS NULL");
   db.run("UPDATE requests SET category = 'General' WHERE category IS NULL");
@@ -539,6 +542,7 @@ app.get("/api/requests/:id", async (req, res) => {
           r.status,
           r.assigned_department as assignedDepartment,
           COALESCE(w.full_name, r.assigned_user) as assignedUser,
+          r.total_time_spent_minutes as totalTimeSpentMinutes,
           r.requester_signed_off as requesterSignedOff,
           r.requester_signed_off_name as requesterSignedOffName,
           r.requester_signed_off_at as requesterSignedOffAt,
@@ -848,6 +852,7 @@ app.get("/api/admin/requests", requireAdmin, async (req, res) => {
           COALESCE(w.full_name, r.assigned_user) as assignedUserName,
           r.assigned_at as assignedAt,
           r.resolved_at as resolvedAt,
+          r.total_time_spent_minutes as totalTimeSpentMinutes,
           r.requester_signed_off as requesterSignedOff,
           r.requester_signed_off_name as requesterSignedOffName,
           r.requester_signed_off_at as requesterSignedOffAt,
@@ -1220,6 +1225,7 @@ app.get("/api/worker/requests", requireWorker, async (req, res) => {
           r.status,
           r.assigned_department as assignedDepartment,
           r.assigned_user as assignedUser,
+          r.total_time_spent_minutes as totalTimeSpentMinutes,
           r.updated_at as updatedAt,
           r.created_at as createdAt
         FROM requests r
@@ -1239,9 +1245,16 @@ app.post("/api/worker/requests/:id/status", requireWorker, async (req, res) => {
   const requestId = Number.parseInt(req.params.id, 10);
   const nextStatus = normalizeText(req.body.status, 30);
   const note = normalizeText(req.body.note, 1000);
+  const parsedTimeSpentMinutes = Number.parseInt(String(req.body.timeSpentMinutes ?? "0"), 10);
+  const timeSpentMinutes = Number.isInteger(parsedTimeSpentMinutes) ? parsedTimeSpentMinutes : 0;
 
   if (!Number.isInteger(requestId) || requestId <= 0 || !workerUpdatableStates.has(nextStatus)) {
     res.status(400).json({ error: "Valid request ID and worker status are required." });
+    return;
+  }
+
+  if (timeSpentMinutes < 0 || timeSpentMinutes > 1440) {
+    res.status(400).json({ error: "Time spent must be between 0 and 1440 minutes." });
     return;
   }
 
@@ -1265,13 +1278,20 @@ app.post("/api/worker/requests/:id/status", requireWorker, async (req, res) => {
     }
 
     const timestamp = new Date().toISOString();
-    await runSql("UPDATE requests SET status = ?, resolved_at = NULL, updated_at = ? WHERE id = ?", [nextStatus, timestamp, requestId]);
+    await runSql(
+      "UPDATE requests SET status = ?, resolved_at = NULL, total_time_spent_minutes = COALESCE(total_time_spent_minutes, 0) + ?, updated_at = ? WHERE id = ?",
+      [nextStatus, timeSpentMinutes, timestamp, requestId]
+    );
 
+    const timeMessage = timeSpentMinutes > 0 ? ` Time added: ${timeSpentMinutes} minute(s).` : "";
     const message = note
-      ? `${req.session.workerName} set status to ${nextStatus}. Note: ${note}`
-      : `${req.session.workerName} set status to ${nextStatus}.`;
+      ? `${req.session.workerName} set status to ${nextStatus}.${timeMessage} Note: ${note}`
+      : `${req.session.workerName} set status to ${nextStatus}.${timeMessage}`;
     await addNotification(requestId, message);
-    await addRequestAudit(req, "request_status_updated_by_worker", "request", requestId, { status: nextStatus });
+    await addRequestAudit(req, "request_status_updated_by_worker", "request", requestId, {
+      status: nextStatus,
+      timeSpentMinutes,
+    });
 
     res.json({ ok: true });
   } catch {

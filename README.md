@@ -46,6 +46,7 @@ A modern service-desk style web app for capturing inbound requests, assigning wo
 - Separate login panel for support workers
 - Workers only see requests assigned to them
 - Workers can update only their own assigned requests (`Work In Progress`, `Pending`, `Resolved`)
+- Workers can log time spent (minutes) when updating a ticket; time accumulates per request
 - Worker updates create requester-visible notifications
 
 ## Ticket Lifecycle
