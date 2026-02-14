@@ -365,7 +365,7 @@ function renderWorkersTable() {
       <td>${escapeHtml(status)}</td>
       <td>
         <div class="actions compact">
-          <button type="button" class="secondary" data-role="reset-worker-password" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Reset Password</button>
+          <button type="button" data-role="reset-worker-password" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Reset Password</button>
           ${worker.isActive ? `<button type="button" class="secondary" data-role="deactivate-worker" data-id="${worker.id}">Deactivate</button>` : ""}
           <button type="button" class="secondary" data-role="remove-worker" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Remove</button>
         </div>
@@ -535,19 +535,57 @@ function updateViewButtons() {
 }
 
 async function refreshPanel() {
-  const [requests, metrics, workers] = await Promise.all([loadRequests(), loadMetrics(), loadWorkers(), loadDepartments(), loadAuditLogs()]);
-  requestsCache = requests;
-  workersCache = workers;
+  const [requestsResult, metricsResult, workersResult, departmentsResult, auditResult] = await Promise.allSettled([
+    loadRequests(),
+    loadMetrics(),
+    loadWorkers(),
+    loadDepartments(),
+    loadAuditLogs(),
+  ]);
 
-  renderSummaryFromMetrics(metrics);
-  updateAssigneeFilterOptions(requestsCache);
+  if (workersResult.status === "fulfilled") {
+    workersCache = workersResult.value;
+    renderWorkersTable();
+    workerStatus.textContent = `Loaded ${workersCache.length} worker(s).`;
+  } else {
+    workersCache = [];
+    renderWorkersTable();
+    workerStatus.textContent = `Failed to load workers: ${workersResult.reason?.message || "Unknown error."}`;
+  }
 
-  const filtered = applyFilters(requestsCache);
-  renderRows(filtered);
-  renderBoard(filtered);
-  renderWorkersTable();
-  renderAuditLogs();
-  panelStatus.textContent = `Loaded ${filtered.length} filtered ticket(s).`;
+  if (departmentsResult.status === "fulfilled") {
+    departments = departmentsResult.value || {};
+  } else {
+    departments = {};
+  }
+
+  if (auditResult.status === "fulfilled") {
+    auditLogsCache = auditResult.value;
+    renderAuditLogs();
+  } else {
+    auditLogsCache = [];
+    renderAuditLogs();
+  }
+
+  if (requestsResult.status === "fulfilled") {
+    requestsCache = requestsResult.value;
+    updateAssigneeFilterOptions(requestsCache);
+    const filtered = applyFilters(requestsCache);
+    renderRows(filtered);
+    renderBoard(filtered);
+
+    if (metricsResult.status === "fulfilled") {
+      renderSummaryFromMetrics(metricsResult.value);
+    }
+
+    panelStatus.textContent = `Loaded ${filtered.length} filtered ticket(s).`;
+    return;
+  }
+
+  requestsCache = [];
+  renderRows([]);
+  renderBoard([]);
+  panelStatus.textContent = `Failed to load requests: ${requestsResult.reason?.message || "Unknown error."}`;
 }
 
 function clearFilters() {
