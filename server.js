@@ -449,6 +449,16 @@ app.use(
 app.use("/api", apiLimiter);
 app.use("/api/admin/login", authLimiter);
 app.use("/api/worker/login", authLimiter);
+
+app.get("/worker-management.html", (req, res) => {
+  if (req.session?.role !== "admin") {
+    res.redirect("/admin.html");
+    return;
+  }
+
+  res.sendFile(path.join(__dirname, "worker-management.html"));
+});
+
 app.use(express.static(__dirname));
 
 app.post("/api/requests", async (req, res) => {

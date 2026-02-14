@@ -1,8 +1,5 @@
-const wmLoginSection = document.getElementById("wmLoginSection");
 const wmPanelSection = document.getElementById("wmPanelSection");
-const wmLoginForm = document.getElementById("wmLoginForm");
 const wmCreateForm = document.getElementById("wmCreateForm");
-const wmLoginStatus = document.getElementById("wmLoginStatus");
 const wmStatus = document.getElementById("wmStatus");
 const wmWorkersBody = document.getElementById("wmWorkersBody");
 const wmRefreshButton = document.getElementById("wmRefreshButton");
@@ -23,11 +20,6 @@ function formatDate(value) {
   return value ? new Date(value).toLocaleString() : "-";
 }
 
-function setView(isAuthenticated) {
-  wmLoginSection.classList.toggle("hidden", isAuthenticated);
-  wmPanelSection.classList.toggle("hidden", !isAuthenticated);
-}
-
 async function fetchJson(url, options) {
   const response = await fetch(url, options);
   const body = await response.json().catch(() => ({}));
@@ -40,14 +32,6 @@ async function fetchJson(url, options) {
 async function checkSession() {
   const session = await fetchJson("/api/admin/session");
   return session.authenticated;
-}
-
-async function login(password) {
-  return fetchJson("/api/admin/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  });
 }
 
 async function logout() {
@@ -138,20 +122,6 @@ async function refreshWorkers() {
   wmStatus.textContent = `Loaded ${workersCache.length} worker(s).`;
 }
 
-wmLoginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const password = document.getElementById("wmPassword").value;
-
-  try {
-    await login(password);
-    setView(true);
-    wmLoginStatus.textContent = "";
-    await refreshWorkers();
-  } catch (error) {
-    wmLoginStatus.textContent = error.message;
-  }
-});
-
 wmCreateForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -226,9 +196,7 @@ wmRefreshButton.addEventListener("click", async () => {
 wmLogoutButton.addEventListener("click", async () => {
   try {
     await logout();
-    setView(false);
-    wmStatus.textContent = "";
-    wmLoginStatus.textContent = "Logged out.";
+    window.location.href = "/admin.html";
   } catch (error) {
     wmStatus.textContent = error.message;
   }
@@ -237,11 +205,13 @@ wmLogoutButton.addEventListener("click", async () => {
 (async function init() {
   try {
     const authenticated = await checkSession();
-    setView(authenticated);
-    if (authenticated) {
-      await refreshWorkers();
+    if (!authenticated) {
+      window.location.href = "/admin.html";
+      return;
     }
+    wmPanelSection.classList.remove("hidden");
+    await refreshWorkers();
   } catch {
-    setView(false);
+    window.location.href = "/admin.html";
   }
 })();
