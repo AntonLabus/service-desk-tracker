@@ -1198,15 +1198,20 @@ app.post("/api/admin/requests/:id/status", requireAdmin, async (req, res) => {
     return;
   }
 
-  if (nextStatus === "Open" || nextStatus === "Closed" || nextStatus === "Resolved") {
+  if (nextStatus === "Open" || nextStatus === "Resolved") {
     res.status(400).json({ error: "Use assignment/signoff flow. Resolved is set only after requester signature." });
     return;
   }
 
   try {
-    const requestRow = await getSql("SELECT assigned_user as assignedUser FROM requests WHERE id = ?", [requestId]);
+    const requestRow = await getSql("SELECT status, assigned_user as assignedUser FROM requests WHERE id = ?", [requestId]);
     if (!requestRow) {
       res.status(404).json({ error: "Request not found." });
+      return;
+    }
+
+    if (nextStatus === "Closed" && requestRow.status !== "Resolved") {
+      res.status(400).json({ error: "Only resolved tickets can be moved to Closed." });
       return;
     }
 
@@ -1402,7 +1407,8 @@ app.get("/api/worker/requests", requireWorker, async (req, res) => {
           r.updated_at as updatedAt,
           r.created_at as createdAt
         FROM requests r
-        WHERE r.assigned_user = ? OR r.assigned_user = ?
+        WHERE (r.assigned_user = ? OR r.assigned_user = ?)
+          AND r.status <> 'Closed'
         ORDER BY datetime(r.updated_at) DESC
       `,
       [req.session.workerUsername, fullName]

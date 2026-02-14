@@ -232,8 +232,11 @@ function memberOptions(department, selectedMemberUsername) {
     .join("");
 }
 
-function statusOptions(selectedStatus) {
+function statusOptions(selectedStatus, currentTicketStatus) {
   const statuses = ["Work In Progress", "Pending", "Awaiting Signoff"];
+  if (currentTicketStatus === "Resolved" || selectedStatus === "Closed") {
+    statuses.push("Closed");
+  }
   return statuses
     .map((status) => {
       const selected = status === selectedStatus ? "selected" : "";
@@ -368,7 +371,7 @@ function renderRows(requests) {
       const department = availableDepartments.includes(requestedDepartment)
         ? requestedDepartment
         : (availableDepartments[0] || "");
-      const selectableStatuses = new Set(["Work In Progress", "Pending", "Awaiting Signoff"]);
+      const selectableStatuses = new Set(["Work In Progress", "Pending", "Awaiting Signoff", "Closed"]);
       const currentStatus = selectableStatuses.has(safeStatus) ? safeStatus : "Work In Progress";
       const canViewSignature = hasRequesterSignoff(request);
 
@@ -415,7 +418,7 @@ function renderRows(requests) {
           <label>
             Update State
             <select data-role="status" data-id="${request.id}">
-              ${statusOptions(currentStatus)}
+              ${statusOptions(currentStatus, safeStatus)}
             </select>
           </label>
           <label>
