@@ -1000,8 +1000,8 @@ app.post("/api/admin/requests/:id/assign", requireAdmin, async (req, res) => {
   const department = normalizeText(req.body.department, 80);
   const assigneeUsername = normalizeText(req.body.assigneeUsername, 32).toLowerCase();
 
-  if (!Number.isInteger(requestId) || requestId <= 0 || !department || !assigneeUsername) {
-    res.status(400).json({ error: "Request ID, department, and assigneeUsername are required." });
+  if (!Number.isInteger(requestId) || requestId <= 0 || !assigneeUsername) {
+    res.status(400).json({ error: "Request ID and assigneeUsername are required." });
     return;
   }
 
@@ -1011,8 +1011,8 @@ app.post("/api/admin/requests/:id/assign", requireAdmin, async (req, res) => {
       [assigneeUsername]
     );
 
-    if (!worker || worker.department !== department) {
-      res.status(400).json({ error: "Assignee must be an active worker in the selected department." });
+    if (!worker) {
+      res.status(400).json({ error: "Assignee must be an active worker." });
       return;
     }
 
@@ -1022,6 +1022,7 @@ app.post("/api/admin/requests/:id/assign", requireAdmin, async (req, res) => {
       return;
     }
 
+    const assignedDepartment = worker.department;
     const timestamp = new Date().toISOString();
     await runSql(
       `
@@ -1031,14 +1032,18 @@ app.post("/api/admin/requests/:id/assign", requireAdmin, async (req, res) => {
             resolved_at = NULL, assigned_at = COALESCE(assigned_at, ?), updated_at = ?
         WHERE id = ?
       `,
-      [department, assigneeUsername, timestamp, timestamp, requestId]
+      [assignedDepartment, assigneeUsername, timestamp, timestamp, requestId]
     );
 
     await addNotification(
       requestId,
-      `Assigned to ${worker.fullName} (${department}). Status changed to Work In Progress.`
+      `Assigned to ${worker.fullName} (${assignedDepartment}). Status changed to Work In Progress.`
     );
-    await addRequestAudit(req, "request_assigned", "request", requestId, { department, assignee: worker.username });
+    await addRequestAudit(req, "request_assigned", "request", requestId, {
+      department: assignedDepartment,
+      requestedDepartment: department || null,
+      assignee: worker.username,
+    });
 
     res.json({ ok: true });
   } catch {

@@ -390,7 +390,11 @@ function renderRows(requests) {
 
   requests.forEach((request) => {
     const row = document.createElement("tr");
-    const department = request.assignedDepartment || request.department;
+    const availableDepartments = Object.keys(departments);
+    const requestedDepartment = request.assignedDepartment || request.department;
+    const department = availableDepartments.includes(requestedDepartment)
+      ? requestedDepartment
+      : (availableDepartments[0] || "");
     const selectableStatuses = new Set(["Work In Progress", "Pending", "Awaiting Signoff"]);
     const currentStatus = selectableStatuses.has(request.status) ? request.status : "Work In Progress";
     const canViewSignature = hasRequesterSignoff(request);
