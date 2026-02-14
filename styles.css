@@ -436,6 +436,82 @@ td {
   z-index: 999;
 }
 
+#panelSection,
+#wmPanelSection,
+#workerPanelSection {
+  font-size: 0.92rem;
+}
+
+#panelSection .card,
+#wmPanelSection.card,
+#workerPanelSection.card {
+  padding: 0.8rem;
+}
+
+#panelSection h2,
+#panelSection h3,
+#panelSection h4,
+#wmPanelSection h2,
+#wmPanelSection h3,
+#workerPanelSection h2,
+#workerPanelSection h3 {
+  margin-bottom: 0.45rem;
+}
+
+#panelSection .summary-grid {
+  gap: 0.4rem;
+}
+
+#panelSection .summary-card {
+  padding: 0.45rem;
+}
+
+#panelSection label,
+#wmPanelSection label,
+#workerPanelSection label {
+  gap: 0.22rem;
+  font-weight: 600;
+}
+
+#panelSection input,
+#panelSection select,
+#panelSection textarea,
+#wmPanelSection input,
+#wmPanelSection select,
+#wmPanelSection textarea,
+#workerPanelSection input,
+#workerPanelSection select,
+#workerPanelSection textarea {
+  min-height: 34px;
+  padding: 0.42rem 0.5rem;
+}
+
+#panelSection button,
+#wmPanelSection button,
+#workerPanelSection button,
+#panelSection .link-button,
+#wmPanelSection .link-button,
+#workerPanelSection .link-button {
+  min-height: 34px;
+  padding: 0.42rem 0.7rem;
+}
+
+#panelSection th,
+#panelSection td,
+#wmPanelSection th,
+#wmPanelSection td,
+#workerPanelSection th,
+#workerPanelSection td {
+  padding: 0.42rem;
+  font-size: 0.88rem;
+}
+
+#panelSection .actions,
+#wmPanelSection .actions,
+#workerPanelSection .actions {
+  gap: 0.4rem;
+}
+
 @media (max-width: 1080px) {
   .page-grid {
     grid-template-columns: 1fr;
