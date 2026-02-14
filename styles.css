@@ -398,6 +398,22 @@ td {
   padding: 0.4rem;
 }
 
+.site-watermark {
+  position: fixed;
+  right: 16px;
+  bottom: 10px;
+  margin: 0;
+  font-size: 0.78rem;
+  font-style: italic;
+  font-family: "Segoe Script", "Brush Script MT", cursive;
+  color: rgba(216, 232, 255, 0.72);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  user-select: none;
+  z-index: 999;
+}
+
 @media (max-width: 1080px) {
   .page-grid {
     grid-template-columns: 1fr;
