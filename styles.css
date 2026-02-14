@@ -179,14 +179,15 @@ button,
   font-weight: 600;
   box-shadow: 0 7px 0 rgba(20, 47, 122, 0.95), 0 12px 20px rgba(2, 10, 34, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   transform: translateY(0);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
 }
 
 button:hover,
 .link-button:hover {
   background: linear-gradient(135deg, var(--primary-strong), #5d9fff);
-  box-shadow: 0 8px 0 rgba(20, 47, 122, 0.95), 0 14px 22px rgba(2, 10, 34, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.42);
-  transform: translateY(-1px);
+  box-shadow: 0 9px 0 rgba(20, 47, 122, 0.95), 0 16px 26px rgba(2, 10, 34, 0.55), 0 0 16px rgba(118, 167, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transform: translateY(-2px) scale(1.01);
+  filter: saturate(1.08);
   text-decoration: none;
 }
 
@@ -200,6 +201,11 @@ button.secondary,
 .link-button.secondary {
   background: linear-gradient(135deg, #1b2f67, var(--secondary));
   box-shadow: 0 7px 0 rgba(16, 35, 86, 0.98), 0 12px 20px rgba(2, 10, 34, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+button.secondary:hover,
+.link-button.secondary:hover {
+  box-shadow: 0 9px 0 rgba(16, 35, 86, 0.98), 0 16px 26px rgba(2, 10, 34, 0.56), 0 0 14px rgba(95, 133, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 button:focus-visible,
