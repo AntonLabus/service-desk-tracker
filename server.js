@@ -871,6 +871,40 @@ app.delete("/api/admin/workers/:id/permanent", requireAdmin, async (req, res) =>
   }
 });
 
+app.post("/api/admin/workers/:id/reset-password", requireAdmin, async (req, res) => {
+  const workerId = Number.parseInt(req.params.id, 10);
+  const newPassword = String(req.body.newPassword || "");
+
+  if (!Number.isInteger(workerId) || workerId <= 0) {
+    res.status(400).json({ error: "Valid worker ID is required." });
+    return;
+  }
+
+  if (!isStrongPassword(newPassword)) {
+    res.status(400).json({ error: "Password must be 12+ chars and include upper, lower, number, and symbol." });
+    return;
+  }
+
+  try {
+    const worker = await getSql("SELECT username FROM worker_accounts WHERE id = ?", [workerId]);
+    if (!worker) {
+      res.status(404).json({ error: "Worker not found." });
+      return;
+    }
+
+    const { passwordSalt, passwordHash } = createPasswordRecord(newPassword);
+    await runSql(
+      "UPDATE worker_accounts SET password_hash = ?, password_salt = ?, must_change_password = 1, failed_attempts = 0, locked_until = NULL WHERE id = ?",
+      [passwordHash, passwordSalt, workerId]
+    );
+
+    await addRequestAudit(req, "worker_password_reset_by_admin", "worker", worker.username);
+    res.status(200).json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Failed to reset worker password." });
+  }
+});
+
 app.get("/api/admin/departments", requireAdmin, async (req, res) => {
   try {
     const rows = await allSql(

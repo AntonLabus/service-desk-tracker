@@ -202,6 +202,14 @@ async function removeWorker(workerId) {
   }
 }
 
+async function resetWorkerPassword(workerId, newPassword) {
+  return fetchJson(`/api/admin/workers/${workerId}/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newPassword }),
+  });
+}
+
 async function loadRequests() {
   return fetchJson("/api/admin/requests");
 }
@@ -357,6 +365,7 @@ function renderWorkersTable() {
       <td>${escapeHtml(status)}</td>
       <td>
         <div class="actions compact">
+          <button type="button" class="secondary" data-role="reset-worker-password" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Reset Password</button>
           ${worker.isActive ? `<button type="button" class="secondary" data-role="deactivate-worker" data-id="${worker.id}">Deactivate</button>` : ""}
           <button type="button" class="secondary" data-role="remove-worker" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Remove</button>
         </div>
@@ -687,6 +696,22 @@ workersTableBody.addEventListener("click", async (event) => {
     try {
       await removeWorker(button.dataset.id);
       workerStatus.textContent = "Worker removed permanently.";
+      await refreshPanel();
+    } catch (error) {
+      workerStatus.textContent = error.message;
+    }
+  }
+
+  if (button.dataset.role === "reset-worker-password") {
+    const username = button.dataset.username || "this worker";
+    const newPassword = window.prompt(`Enter a new temporary password for ${username}.\nMust be at least 12 chars with upper, lower, number, and symbol.`);
+    if (!newPassword) {
+      return;
+    }
+
+    try {
+      await resetWorkerPassword(button.dataset.id, newPassword);
+      workerStatus.textContent = `Password reset for ${username}. Worker must change password on next login.`;
       await refreshPanel();
     } catch (error) {
       workerStatus.textContent = error.message;
