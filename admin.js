@@ -483,7 +483,14 @@ async function refreshPanel() {
   if (requestsResult.status === "fulfilled") {
     requestsCache = requestsResult.value;
     updateAssigneeFilterOptions(requestsCache);
-    const filtered = applyFilters(requestsCache);
+    let filtered = applyFilters(requestsCache);
+
+    if (requestsCache.length > 0 && filtered.length === 0) {
+      clearFilters();
+      filtered = applyFilters(requestsCache);
+      panelStatus.textContent = "Filters were reset automatically to show available tickets.";
+    }
+
     renderRows(filtered);
     renderBoard(filtered);
 
@@ -491,7 +498,9 @@ async function refreshPanel() {
       renderSummaryFromMetrics(metricsResult.value);
     }
 
-    panelStatus.textContent = `Loaded ${filtered.length} filtered ticket(s).`;
+    if (!panelStatus.textContent) {
+      panelStatus.textContent = `Loaded ${filtered.length} filtered ticket(s).`;
+    }
     return;
   }
 
