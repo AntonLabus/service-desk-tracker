@@ -787,11 +787,36 @@ app.get("/api/admin/workers", requireAdmin, async (req, res) => {
   try {
     const workers = await allSql(
       `
-        SELECT id, full_name as fullName, username, department, is_active as isActive,
-               failed_attempts as failedAttempts, locked_until as lockedUntil,
-               must_change_password as mustChangePassword, created_at as createdAt
-        FROM worker_accounts
-        ORDER BY is_active DESC, department, full_name
+        SELECT
+          w.id,
+          w.full_name as fullName,
+          w.username,
+          w.department,
+          w.is_active as isActive,
+          w.failed_attempts as failedAttempts,
+          w.locked_until as lockedUntil,
+          w.must_change_password as mustChangePassword,
+          w.created_at as createdAt,
+          (
+            SELECT COUNT(1)
+            FROM requests r
+            WHERE (r.assigned_user = w.username OR r.assigned_user = w.full_name)
+              AND r.status NOT IN ('Resolved', 'Closed')
+          ) as activeRequestCount,
+          (
+            SELECT MAX(a.created_at)
+            FROM audit_logs a
+            WHERE a.actor_role = 'worker'
+              AND a.actor_identifier = w.username
+          ) as lastActivityAt,
+          (
+            SELECT MAX(a.created_at)
+            FROM audit_logs a
+            WHERE a.action = 'worker_login_success'
+              AND a.actor_identifier = w.username
+          ) as lastLoginAt
+        FROM worker_accounts w
+        ORDER BY w.is_active DESC, w.department, w.full_name
       `
     );
     res.json(workers);

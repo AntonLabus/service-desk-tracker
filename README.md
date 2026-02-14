@@ -23,6 +23,11 @@ A modern service-desk style web app for capturing inbound requests, assigning wo
 
 - Secure admin panel (session-based login)
 - Worker user management (add worker, deactivate worker)
+- Dedicated worker management page (`/worker-management.html`) with:
+   - Add worker
+   - Reset worker password
+   - Deactivate/remove worker
+   - Last activity and active request count per worker
 - Table + board views for all ticket states
 - Filters:
   - Date range
@@ -93,6 +98,10 @@ A modern service-desk style web app for capturing inbound requests, assigning wo
 5. Open worker panel:
 
    `http://localhost:3000/worker.html`
+
+6. Open worker management page:
+
+   `http://localhost:3000/worker-management.html`
 
 ## Default Credentials
 

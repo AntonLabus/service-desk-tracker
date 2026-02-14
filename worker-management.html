@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worker Management - Service Desk</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <p class="eyebrow">Service Operations</p>
+        <h1>Worker Management</h1>
+      </div>
+      <div class="actions">
+        <a class="link-button secondary" href="/admin.html">Back to Admin</a>
+        <a class="link-button secondary" href="/worker.html">Worker Panel</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container stack">
+    <section class="card" id="wmLoginSection">
+      <h2>Admin Login</h2>
+      <form id="wmLoginForm" class="grid cols-2">
+        <label>
+          Password
+          <input type="password" id="wmPassword" required />
+        </label>
+        <div class="actions align-end">
+          <button type="submit">Login</button>
+        </div>
+      </form>
+      <p id="wmLoginStatus" class="status"></p>
+    </section>
+
+    <section class="card hidden" id="wmPanelSection">
+      <div class="row-between">
+        <h2>All Workers</h2>
+        <div class="actions">
+          <button type="button" id="wmRefreshButton" class="secondary">Refresh</button>
+          <button type="button" id="wmLogoutButton" class="secondary">Logout</button>
+        </div>
+      </div>
+
+      <p class="subtitle">View all workers, create new workers, reset passwords, and manage account status.</p>
+      <p id="wmStatus" class="status"></p>
+
+      <form id="wmCreateForm" class="grid cols-4">
+        <label>
+          Full Name
+          <input type="text" id="wmFullName" required />
+        </label>
+        <label>
+          Username
+          <input type="text" id="wmUsername" required placeholder="john.doe" />
+        </label>
+        <label>
+          Department
+          <input type="text" id="wmDepartment" required />
+        </label>
+        <label>
+          Temporary Password
+          <input type="password" id="wmTempPassword" required minlength="12" />
+        </label>
+        <div class="actions align-end">
+          <button type="submit">Add Worker</button>
+        </div>
+      </form>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Department</th>
+              <th>Status</th>
+              <th>Active Requests</th>
+              <th>Last Active</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="wmWorkersBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <p class="site-watermark" aria-hidden="true">created by Anton Labuschagne</p>
+
+  <script src="worker-management.js"></script>
+</body>
+</html>
