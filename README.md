@@ -151,13 +151,13 @@ This app is ready to deploy as a single Render Web Service (frontend + backend t
 2. In Render, click **New** -> **Blueprint**.
 3. Select this repository.
 4. Render will detect `render.yaml` and create:
-   - Web service (`service-desk-tracker`)
-   - Persistent disk mounted at `/var/data`
+   - Free web service (`service-desk-tracker`)
 5. Set secret environment values in Render:
    - `SESSION_SECRET` (strong random value)
    - `ADMIN_PASSWORD` (strong admin password)
 
-`SQLITE_PATH` is preconfigured to `/var/data/requests.db` so data survives deploys/restarts.
+`SQLITE_PATH` is preconfigured to `/tmp/requests.db` for Render free tier compatibility.
+This storage is ephemeral, so ticket data can be lost on deploy/restart.
 
 ### Option B: Manual Web Service
 
@@ -166,12 +166,11 @@ If not using Blueprint, create a **Web Service** and set:
 - Build command: `npm install`
 - Start command: `npm start`
 - Environment: `Node`
-- Add persistent disk mounted at `/var/data` (1 GB is enough to start)
 - Environment variables:
   - `NODE_ENV=production`
   - `SESSION_SECRET=<strong-secret>`
   - `ADMIN_PASSWORD=<strong-password>`
-  - `SQLITE_PATH=/var/data/requests.db`
+   - `SQLITE_PATH=/tmp/requests.db`
 
 After deploy:
 
