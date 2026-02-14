@@ -331,77 +331,96 @@ function renderRows(requests) {
     return;
   }
 
+  let renderedCount = 0;
+
   requests.forEach((request) => {
     const row = document.createElement("tr");
-    const availableDepartments = Object.keys(departments);
-    const safeStatus = String(request.status || "Open");
-    const requestedDepartment = request.assignedDepartment || request.department;
-    const department = availableDepartments.includes(requestedDepartment)
-      ? requestedDepartment
-      : (availableDepartments[0] || "");
-    const selectableStatuses = new Set(["Work In Progress", "Pending", "Awaiting Signoff"]);
-    const currentStatus = selectableStatuses.has(safeStatus) ? safeStatus : "Work In Progress";
-    const canViewSignature = hasRequesterSignoff(request);
+    try {
+      const availableDepartments = Object.keys(departments);
+      const safeStatus = String(request.status || "Open");
+      const requestedDepartment = request.assignedDepartment || request.department;
+      const department = availableDepartments.includes(requestedDepartment)
+        ? requestedDepartment
+        : (availableDepartments[0] || "");
+      const selectableStatuses = new Set(["Work In Progress", "Pending", "Awaiting Signoff"]);
+      const currentStatus = selectableStatuses.has(safeStatus) ? safeStatus : "Work In Progress";
+      const canViewSignature = hasRequesterSignoff(request);
 
-    row.innerHTML = `
-      <td>
-        <strong>${escapeHtml(request.ticketKey || `#${request.id}`)}</strong><br>
-        #${request.id}
-      </td>
-      <td>
-        <strong>${escapeHtml(request.name)}</strong><br>
-        ${escapeHtml(request.email)}
-      </td>
-      <td>
-        Dept: ${escapeHtml(request.department)}<br>
-        Pri: ${escapeHtml(request.priority)}<br>
-        Ch: ${escapeHtml(request.channel || "-")}<br>
-        Cat: ${escapeHtml(request.category || "-")} / Impact: ${escapeHtml(request.impact || "-")}
-      </td>
-      <td>
-        <span class="pill state-${escapeHtml(safeStatus.replace(/\s+/g, "-").toLowerCase())}">${escapeHtml(safeStatus)}</span>
-      </td>
-      <td>${escapeHtml(request.assignedDepartment || "-")} / ${escapeHtml(request.assignedUserName || request.assignedUser || "-")}</td>
-      <td>
-        <span class="pill ${slaClass(request)}">${formatDuration(request)}</span><br>
-        Created: ${escapeHtml(formatDate(request.createdAt))}<br>
-        <small>Time logged: ${escapeHtml(formatTrackedMinutes(request.totalTimeSpentMinutes))}</small>
-      </td>
-      <td>
-        <label>
-          Assign Dept
-          <select data-role="department" data-id="${request.id}">
-            ${departmentOptions(department)}
-          </select>
-        </label>
-        <label>
-          Assign Worker
-          <select data-role="assignee" data-id="${request.id}">
-            ${memberOptions(department, request.assignedUser || "")}
-          </select>
-        </label>
-        <div class="actions compact">
-          <button type="button" data-role="assign" data-id="${request.id}">Assign</button>
-        </div>
-        <label>
-          Update State
-          <select data-role="status" data-id="${request.id}">
-            ${statusOptions(currentStatus)}
-          </select>
-        </label>
-        <label>
-          Update Note
-          <input data-role="note" data-id="${request.id}" type="text" placeholder="Add update note" />
-        </label>
-        <div class="actions compact">
-          <button type="button" data-role="update-status" data-id="${request.id}">Update</button>
-          ${canViewSignature ? `<button type="button" data-role="view-signature" data-id="${request.id}">View Signature</button>` : ""}
-        </div>
-      </td>
-    `;
-
-    adminTableBody.appendChild(row);
+      row.innerHTML = `
+        <td>
+          <strong>${escapeHtml(request.ticketKey || `#${request.id}`)}</strong><br>
+          #${request.id}
+        </td>
+        <td>
+          <strong>${escapeHtml(request.name)}</strong><br>
+          ${escapeHtml(request.email)}
+        </td>
+        <td>
+          Dept: ${escapeHtml(request.department)}<br>
+          Pri: ${escapeHtml(request.priority)}<br>
+          Ch: ${escapeHtml(request.channel || "-")}<br>
+          Cat: ${escapeHtml(request.category || "-")} / Impact: ${escapeHtml(request.impact || "-")}
+        </td>
+        <td>
+          <span class="pill state-${escapeHtml(safeStatus.replace(/\s+/g, "-").toLowerCase())}">${escapeHtml(safeStatus)}</span>
+        </td>
+        <td>${escapeHtml(request.assignedDepartment || "-")} / ${escapeHtml(request.assignedUserName || request.assignedUser || "-")}</td>
+        <td>
+          <span class="pill ${slaClass(request)}">${formatDuration(request)}</span><br>
+          Created: ${escapeHtml(formatDate(request.createdAt))}<br>
+          <small>Time logged: ${escapeHtml(formatTrackedMinutes(request.totalTimeSpentMinutes))}</small>
+        </td>
+        <td>
+          <label>
+            Assign Dept
+            <select data-role="department" data-id="${request.id}">
+              ${departmentOptions(department)}
+            </select>
+          </label>
+          <label>
+            Assign Worker
+            <select data-role="assignee" data-id="${request.id}">
+              ${memberOptions(department, request.assignedUser || "")}
+            </select>
+          </label>
+          <div class="actions compact">
+            <button type="button" data-role="assign" data-id="${request.id}">Assign</button>
+          </div>
+          <label>
+            Update State
+            <select data-role="status" data-id="${request.id}">
+              ${statusOptions(currentStatus)}
+            </select>
+          </label>
+          <label>
+            Update Note
+            <input data-role="note" data-id="${request.id}" type="text" placeholder="Add update note" />
+          </label>
+          <div class="actions compact">
+            <button type="button" data-role="update-status" data-id="${request.id}">Update</button>
+            ${canViewSignature ? `<button type="button" data-role="view-signature" data-id="${request.id}">View Signature</button>` : ""}
+          </div>
+        </td>
+      `;
+      adminTableBody.appendChild(row);
+      renderedCount += 1;
+    } catch (error) {
+      row.innerHTML = `
+        <td><strong>${escapeHtml(request.ticketKey || `#${request.id}`)}</strong><br>#${escapeHtml(String(request.id || "-"))}</td>
+        <td>${escapeHtml(request.name || "-")}<br>${escapeHtml(request.email || "-")}</td>
+        <td>${escapeHtml(request.department || "-")} / ${escapeHtml(request.priority || "-")}</td>
+        <td>${escapeHtml(String(request.status || "Open"))}</td>
+        <td>${escapeHtml(request.assignedUserName || request.assignedUser || "-")}</td>
+        <td>${escapeHtml(formatDate(request.createdAt))}</td>
+        <td>Fallback row rendered.</td>
+      `;
+      adminTableBody.appendChild(row);
+      renderedCount += 1;
+      panelStatus.textContent = `Rendered with fallback for one or more tickets: ${error?.message || "unknown error"}`;
+    }
   });
+
+  return renderedCount;
 }
 
 function renderBoard(requests) {
@@ -491,7 +510,7 @@ async function refreshPanel() {
       panelStatus.textContent = "Filters were reset automatically to show available tickets.";
     }
 
-    renderRows(filtered);
+    const renderedRowCount = renderRows(filtered);
     renderBoard(filtered);
 
     if (metricsResult.status === "fulfilled") {
@@ -499,7 +518,7 @@ async function refreshPanel() {
     }
 
     if (!panelStatus.textContent) {
-      panelStatus.textContent = `Loaded ${filtered.length} filtered ticket(s).`;
+      panelStatus.textContent = `Loaded ${filtered.length} filtered ticket(s). Rendered rows: ${renderedRowCount}.`;
     }
     return;
   }
