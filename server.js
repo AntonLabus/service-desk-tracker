@@ -740,22 +740,14 @@ app.post("/api/requests/:id/dispute", async (req, res) => {
       return;
     }
 
-    const timestamp = new Date().toISOString();
-    await runSql(
-      `
-        UPDATE requests
-        SET status = 'Work In Progress', requester_signed_off = 0,
-            requester_signature = NULL, requester_signed_off_name = NULL,
-            requester_signed_off_at = NULL, resolved_at = NULL, updated_at = ?
-        WHERE id = ?
-      `,
-      [timestamp, requestId]
-    );
+    await addNotification(requestId, `Requester disputed completion. Admin review required before any status change. Reason: ${reason}`);
+    await addRequestAudit(req, "request_signoff_dispute_submitted", "request", requestId, { reason });
 
-    await addNotification(requestId, `Requester disputed completion. Request re-opened to Work In Progress. Reason: ${reason}`);
-    await addRequestAudit(req, "request_signoff_disputed", "request", requestId, { reason });
-
-    res.json({ ok: true, status: "Work In Progress" });
+    res.json({
+      ok: true,
+      status: "Resolved",
+      message: "Dispute submitted. Only admin can change status after resolution.",
+    });
   } catch {
     res.status(500).json({ error: "Failed to dispute request." });
   }
@@ -1444,7 +1436,7 @@ app.post("/api/worker/requests/:id/status", requireWorker, async (req, res) => {
     const fullName = worker?.fullName || "";
 
     const requestRow = await getSql(
-      "SELECT id, assigned_user as assignedUser FROM requests WHERE id = ?",
+      "SELECT id, status, assigned_user as assignedUser FROM requests WHERE id = ?",
       [requestId]
     );
 
@@ -1455,6 +1447,11 @@ app.post("/api/worker/requests/:id/status", requireWorker, async (req, res) => {
 
     if (requestRow.assignedUser !== req.session.workerUsername && requestRow.assignedUser !== fullName) {
       res.status(403).json({ error: "You can only update requests assigned to you." });
+      return;
+    }
+
+    if (requestRow.status === "Resolved" || requestRow.status === "Closed") {
+      res.status(403).json({ error: "Only admin can change status after a ticket is resolved." });
       return;
     }
 
