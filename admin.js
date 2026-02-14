@@ -179,12 +179,16 @@ async function logout() {
 }
 
 async function loadDepartments() {
-  departments = await fetchJson("/api/admin/departments");
+  const data = await fetchJson("/api/admin/departments");
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    return data;
+  }
+  return {};
 }
 
 async function loadAuditLogs() {
   const data = await fetchJson("/api/admin/audit-logs?limit=120");
-  auditLogsCache = asArray(data);
+  return asArray(data);
 }
 
 async function loadRequests() {
