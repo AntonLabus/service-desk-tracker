@@ -366,24 +366,27 @@ async function initializeDatabase() {
   await runSql("UPDATE worker_accounts SET must_change_password = 1 WHERE must_change_password IS NULL");
   await runSql("UPDATE worker_accounts SET created_at = datetime('now') WHERE created_at IS NULL");
 
-  const defaultWorkers = [
-    { fullName: "Alex Smith", username: "alex.smith", department: "IT", password: "Temp#1234" },
-    { fullName: "Jordan Lee", username: "jordan.lee", department: "IT", password: "Temp#1234" },
-    { fullName: "Morgan Reed", username: "morgan.reed", department: "HR", password: "Temp#1234" },
-    { fullName: "Taylor Brown", username: "taylor.brown", department: "HR", password: "Temp#1234" },
-    { fullName: "Casey Patel", username: "casey.patel", department: "Facilities", password: "Temp#1234" },
-    { fullName: "Riley Kim", username: "riley.kim", department: "Facilities", password: "Temp#1234" },
-  ];
+  const shouldSeedDefaultWorkers = process.env.SEED_DEFAULT_WORKERS === "true";
+  if (shouldSeedDefaultWorkers) {
+    const defaultWorkers = [
+      { fullName: "Alex Smith", username: "alex.smith", department: "IT", password: "Temp#1234" },
+      { fullName: "Jordan Lee", username: "jordan.lee", department: "IT", password: "Temp#1234" },
+      { fullName: "Morgan Reed", username: "morgan.reed", department: "HR", password: "Temp#1234" },
+      { fullName: "Taylor Brown", username: "taylor.brown", department: "HR", password: "Temp#1234" },
+      { fullName: "Casey Patel", username: "casey.patel", department: "Facilities", password: "Temp#1234" },
+      { fullName: "Riley Kim", username: "riley.kim", department: "Facilities", password: "Temp#1234" },
+    ];
 
-  for (const worker of defaultWorkers) {
-    const { passwordSalt, passwordHash } = createPasswordRecord(worker.password);
-    await runSql(
-      `
-        INSERT OR IGNORE INTO worker_accounts (full_name, username, department, password_hash, password_salt, is_active, failed_attempts, locked_until, must_change_password, created_at)
-        VALUES (?, ?, ?, ?, ?, 1, 0, NULL, 1, ?)
-      `,
-      [worker.fullName, worker.username, worker.department, passwordHash, passwordSalt, new Date().toISOString()]
-    );
+    for (const worker of defaultWorkers) {
+      const { passwordSalt, passwordHash } = createPasswordRecord(worker.password);
+      await runSql(
+        `
+          INSERT OR IGNORE INTO worker_accounts (full_name, username, department, password_hash, password_salt, is_active, failed_attempts, locked_until, must_change_password, created_at)
+          VALUES (?, ?, ?, ?, ?, 1, 0, NULL, 1, ?)
+        `,
+        [worker.fullName, worker.username, worker.department, passwordHash, passwordSalt, new Date().toISOString()]
+      );
+    }
   }
 
   const rows = await allSql("SELECT id FROM requests WHERE ticket_key IS NULL OR ticket_key = ''");
@@ -891,6 +894,28 @@ app.delete("/api/admin/workers/:id", requireAdmin, async (req, res) => {
     res.status(204).end();
   } catch {
     res.status(500).json({ error: "Failed to deactivate worker." });
+  }
+});
+
+app.post("/api/admin/workers/:id/activate", requireAdmin, async (req, res) => {
+  const workerId = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(workerId) || workerId <= 0) {
+    res.status(400).json({ error: "Valid worker ID is required." });
+    return;
+  }
+
+  try {
+    const worker = await getSql("SELECT username FROM worker_accounts WHERE id = ?", [workerId]);
+    if (!worker) {
+      res.status(404).json({ error: "Worker not found." });
+      return;
+    }
+
+    await runSql("UPDATE worker_accounts SET is_active = 1 WHERE id = ?", [workerId]);
+    await addRequestAudit(req, "worker_activated", "worker", worker.username);
+    res.status(200).json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Failed to activate worker." });
   }
 });
 

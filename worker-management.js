@@ -69,6 +69,14 @@ async function deactivateWorker(workerId) {
   }
 }
 
+async function activateWorker(workerId) {
+  const response = await fetch(`/api/admin/workers/${workerId}/activate`, { method: "POST" });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to activate worker.");
+  }
+}
+
 async function removeWorker(workerId) {
   const response = await fetch(`/api/admin/workers/${workerId}/permanent`, { method: "DELETE" });
   if (!response.ok) {
@@ -108,6 +116,7 @@ function renderWorkers() {
         <div class="actions compact">
           <button type="button" data-role="reset" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Reset Password</button>
           ${worker.isActive ? `<button type="button" class="secondary" data-role="deactivate" data-id="${worker.id}">Deactivate</button>` : ""}
+          ${!worker.isActive ? `<button type="button" data-role="activate" data-id="${worker.id}">Activate</button>` : ""}
           <button type="button" class="secondary" data-role="remove" data-id="${worker.id}" data-username="${escapeHtml(worker.username)}">Remove</button>
         </div>
       </td>
@@ -166,6 +175,13 @@ wmWorkersBody.addEventListener("click", async (event) => {
     if (button.dataset.role === "deactivate") {
       await deactivateWorker(workerId);
       wmStatus.textContent = "Worker deactivated.";
+      await refreshWorkers();
+      return;
+    }
+
+    if (button.dataset.role === "activate") {
+      await activateWorker(workerId);
+      wmStatus.textContent = "Worker activated.";
       await refreshWorkers();
       return;
     }
