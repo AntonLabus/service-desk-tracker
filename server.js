@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const dns = require("dns").promises;
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 const { createClient } = require("@libsql/client");
@@ -37,6 +38,109 @@ const allowedCategories = new Set(["General", "Access", "Hardware", "Software", 
 const allowedImpacts = new Set(["Low", "Medium", "High"]);
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
+
+const enforceEmailDomainCheck = process.env.EMAIL_MX_CHECK !== "false";
+const EMAIL_DNS_TIMEOUT_MS = Number(process.env.EMAIL_DNS_TIMEOUT_MS || 2000);
+const EMAIL_DOMAIN_CACHE_MS = Number(process.env.EMAIL_DOMAIN_CACHE_MS || 10 * 60 * 1000);
+const emailDomainDeliverabilityCache = new Map();
+
+function withTimeout(promise, timeoutMs) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return promise;
+  }
+
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("DNS_TIMEOUT")), timeoutMs);
+    }),
+  ]);
+}
+
+function domainFromEmailAddress(email) {
+  const value = String(email || "").trim().toLowerCase();
+  const at = value.lastIndexOf("@");
+  if (at <= 0 || at === value.length - 1) {
+    return "";
+  }
+  return value.slice(at + 1);
+}
+
+function isPlausibleHostname(hostname) {
+  if (!hostname || hostname.length > 253) {
+    return false;
+  }
+  if (hostname.includes("..") || hostname.startsWith(".") || hostname.endsWith(".")) {
+    return false;
+  }
+  if (/\s/.test(hostname)) {
+    return false;
+  }
+  if (!/^[a-z0-9.-]+$/.test(hostname)) {
+    return false;
+  }
+  if (!hostname.includes(".")) {
+    return false;
+  }
+  if (hostname === "localhost" || hostname.endsWith(".local")) {
+    return false;
+  }
+  return true;
+}
+
+async function checkEmailDomainDeliverability(domain) {
+  if (!isPlausibleHostname(domain)) {
+    return { status: "invalid" };
+  }
+
+  const cached = emailDomainDeliverabilityCache.get(domain);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result;
+  }
+
+  try {
+    const mxRecords = await withTimeout(dns.resolveMx(domain), EMAIL_DNS_TIMEOUT_MS).catch((error) => {
+      if (error && (error.code === "ENODATA" || error.code === "ENOTFOUND")) {
+        return [];
+      }
+      throw error;
+    });
+
+    if (Array.isArray(mxRecords) && mxRecords.length > 0) {
+      const result = { status: "valid" };
+      emailDomainDeliverabilityCache.set(domain, { expiresAt: Date.now() + EMAIL_DOMAIN_CACHE_MS, result });
+      return result;
+    }
+
+    const aRecords = await withTimeout(dns.resolve4(domain), EMAIL_DNS_TIMEOUT_MS).catch((error) => {
+      if (error && (error.code === "ENODATA" || error.code === "ENOTFOUND")) {
+        return [];
+      }
+      throw error;
+    });
+
+    const aaaaRecords = await withTimeout(dns.resolve6(domain), EMAIL_DNS_TIMEOUT_MS).catch((error) => {
+      if (error && (error.code === "ENODATA" || error.code === "ENOTFOUND")) {
+        return [];
+      }
+      throw error;
+    });
+
+    if ((Array.isArray(aRecords) && aRecords.length > 0) || (Array.isArray(aaaaRecords) && aaaaRecords.length > 0)) {
+      const result = { status: "valid" };
+      emailDomainDeliverabilityCache.set(domain, { expiresAt: Date.now() + EMAIL_DOMAIN_CACHE_MS, result });
+      return result;
+    }
+
+    const result = { status: "invalid" };
+    emailDomainDeliverabilityCache.set(domain, { expiresAt: Date.now() + EMAIL_DOMAIN_CACHE_MS, result });
+    return result;
+  } catch (error) {
+    const result = { status: "unknown", error: error?.message || "DNS_LOOKUP_FAILED" };
+    emailDomainDeliverabilityCache.set(domain, { expiresAt: Date.now() + Math.min(EMAIL_DOMAIN_CACHE_MS, 60_000), result });
+    return result;
+  }
+}
 
 function normalizeText(value, maxLength) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, maxLength);
@@ -495,6 +599,19 @@ app.post("/api/requests", async (req, res) => {
   if (!isValidEmail(cleanEmail)) {
     res.status(400).json({ error: "A valid email address is required." });
     return;
+  }
+
+  if (enforceEmailDomainCheck) {
+    const domain = domainFromEmailAddress(cleanEmail);
+    const deliverability = await checkEmailDomainDeliverability(domain);
+    if (deliverability.status === "invalid") {
+      res.status(400).json({ error: "Email domain does not appear to accept email. Please use a valid work email address." });
+      return;
+    }
+    if (deliverability.status === "unknown") {
+      res.status(503).json({ error: "Unable to verify email domain right now. Please try again in a moment." });
+      return;
+    }
   }
 
   if (!allowedPriorities.has(cleanPriority) || !allowedChannels.has(cleanChannel)
