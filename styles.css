@@ -1,13 +1,13 @@
 :root {
-  --bg: #050a1c;
-  --surface: rgba(11, 22, 55, 0.82);
-  --surface-strong: #0a1538;
-  --border: rgba(109, 152, 255, 0.32);
-  --text: #ecf3ff;
-  --muted: #a8b9de;
-  --primary: #4f8dff;
-  --primary-strong: #76a7ff;
-  --secondary: #273a73;
+  --bg: #05070c;
+  --surface: rgba(10, 12, 18, 0.82);
+  --surface-strong: #0b0e16;
+  --border: rgba(255, 255, 255, 0.18);
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.7);
+  --primary: #3b82f6;
+  --primary-strong: #60a5fa;
+  --secondary: #111827;
   --ok: #49d796;
   --warn: #ffbc4f;
   --danger: #ff6f88;
@@ -23,7 +23,8 @@
 body {
   margin: 0;
   font-family: "Segoe UI", Arial, sans-serif;
-  background-image: url("/background-data-overlay.svg"), radial-gradient(circle at 20% 0%, #183a8f 0%, #0b1f54 28%, #071333 55%, #050a1c 100%);
+  position: relative;
+  background-image: url("/background-data-overlay.svg"), radial-gradient(circle at 20% 0%, rgba(59, 130, 246, 0.2) 0%, rgba(0, 0, 0, 0.65) 55%, var(--bg) 100%);
   background-size: cover, cover;
   background-position: center top, center;
   background-repeat: no-repeat, no-repeat;
@@ -31,8 +32,44 @@ body {
   color: var(--text);
 }
 
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.12), rgba(59, 130, 246, 0.1), rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.3));
+  background-size: 360% 360%;
+  animation: monoDrift 9s linear infinite;
+  opacity: 0.7;
+  filter: blur(10px);
+  transform: translateZ(0);
+  will-change: background-position;
+}
+
+@keyframes monoDrift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+}
+
 a {
-  color: #9dc0ff;
+  color: rgba(147, 197, 253, 0.95);
   text-decoration: none;
 }
 
