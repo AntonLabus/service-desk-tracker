@@ -232,6 +232,38 @@ requestForm.addEventListener("submit", async (event) => {
 channelInput.addEventListener("change", togglePhoneNumberField);
 togglePhoneNumberField();
 
+async function tryAutoLoadFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const reference = (params.get("reference") || params.get("ref") || "").trim();
+  const email = (params.get("email") || "").trim().toLowerCase();
+
+  if (!reference || !email) {
+    return;
+  }
+
+  const lookupReferenceInput = document.getElementById("lookupReference");
+  const lookupEmailInput = document.getElementById("lookupEmail");
+  if (!lookupReferenceInput || !lookupEmailInput) {
+    return;
+  }
+
+  lookupReferenceInput.value = reference;
+  lookupEmailInput.value = email;
+  lookupStatus.textContent = "Loading ticket from link...";
+
+  try {
+    const payload = await lookupRequest(reference, email);
+    currentLookup = { requestId: payload.request.id, email };
+    renderRequestDetails(payload);
+    lookupStatus.textContent = "Ticket loaded.";
+  } catch (error) {
+    requestDetails.classList.add("hidden");
+    lookupStatus.textContent = error.message;
+  }
+}
+
+tryAutoLoadFromQuery();
+
 lookupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 

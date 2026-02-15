@@ -322,6 +322,127 @@ async function addNotification(requestId, message) {
   );
 }
 
+function getPublicBaseUrl(req) {
+  const configured = String(process.env.PUBLIC_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (configured) {
+    return configured;
+  }
+
+  const host = req.get("host");
+  if (!host) {
+    return "";
+  }
+
+  const forwardedProto = String(req.get("x-forwarded-proto") || "").split(",")[0].trim();
+  const proto = (forwardedProto || req.protocol || "https").trim();
+  return `${proto}://${host}`;
+}
+
+function buildTrackTicketUrl(baseUrl, ticketKey, email) {
+  if (!baseUrl) {
+    return "";
+  }
+  const url = new URL("/", baseUrl);
+  url.searchParams.set("reference", ticketKey);
+  url.searchParams.set("email", email);
+  return url.toString();
+}
+
+async function sendResendEmail({ to, subject, html, text }) {
+  const apiKey = String(process.env.RESEND_API_KEY || "").trim();
+  if (!apiKey) {
+    return { skipped: true };
+  }
+
+  const from = String(process.env.EMAIL_FROM || "Service Desk <onboarding@resend.dev>").trim();
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      html,
+      text,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`RESEND_FAILED_${response.status}:${body.slice(0, 200)}`);
+  }
+
+  return response.json().catch(() => ({ ok: true }));
+}
+
+async function notifyRequesterByEmail(req, requestId, message, { kind } = {}) {
+  if (process.env.EMAIL_NOTIFICATIONS === "false") {
+    return;
+  }
+
+  const apiKey = String(process.env.RESEND_API_KEY || "").trim();
+  if (!apiKey) {
+    return;
+  }
+
+  const requestRow = await getSql(
+    "SELECT id, ticket_key as ticketKey, email, status FROM requests WHERE id = ?",
+    [requestId]
+  );
+
+  const rawEmail = String(requestRow?.email || "");
+  if (!rawEmail) {
+    return;
+  }
+  const cleanEmail = normalizeEmail(rawEmail);
+  if (!isValidEmail(cleanEmail)) {
+    return;
+  }
+
+  const ticketKey = requestRow?.ticketKey || ticketKeyFromId(requestId);
+  const baseUrl = getPublicBaseUrl(req);
+  const trackUrl = buildTrackTicketUrl(baseUrl, ticketKey, cleanEmail);
+  const safeMessage = normalizeText(message, 800);
+  const statusLine = requestRow?.status ? `Current status: ${requestRow.status}` : "";
+
+  const subject = kind === "created"
+    ? `Ticket created: ${ticketKey}`
+    : `Ticket update: ${ticketKey}`;
+
+  const html = `
+    <div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.4">
+      <h2 style="margin:0 0 12px">${subject}</h2>
+      <p style="margin:0 0 10px"><strong>Update:</strong> ${safeMessage}</p>
+      ${statusLine ? `<p style="margin:0 0 10px">${statusLine}</p>` : ""}
+      ${trackUrl ? `<p style="margin:0 0 10px"><a href="${trackUrl}">Track your ticket</a></p>` : ""}
+      <p style="margin:14px 0 0;color:#5b6472">Ticket reference: <strong>${ticketKey}</strong></p>
+    </div>
+  `;
+
+  const text = [
+    subject,
+    "",
+    `Update: ${safeMessage}`,
+    statusLine,
+    trackUrl ? `Track your ticket: ${trackUrl}` : "",
+    `Ticket reference: ${ticketKey}`,
+  ].filter(Boolean).join("\n");
+
+  try {
+    await sendResendEmail({ to: cleanEmail, subject, html, text });
+  } catch (error) {
+    console.error("Email notification failed:", error?.message || error);
+  }
+}
+
+async function addNotificationAndEmail(req, requestId, message, { kind } = {}) {
+  await addNotification(requestId, message);
+  await notifyRequesterByEmail(req, requestId, message, { kind });
+}
+
 function requireAdmin(req, res, next) {
   if (req.session?.role !== "admin") {
     res.status(401).json({ error: "Admin authentication required." });
@@ -658,7 +779,7 @@ app.post("/api/requests", async (req, res) => {
     const ticketKey = ticketKeyFromId(insertResult.lastID);
     await runSql("UPDATE requests SET ticket_key = ? WHERE id = ?", [ticketKey, insertResult.lastID]);
 
-    await addNotification(insertResult.lastID, "Request created and awaiting assignment.");
+    await addNotificationAndEmail(req, insertResult.lastID, "Request created and awaiting assignment.", { kind: "created" });
     await addRequestAudit(req, "request_created", "request", insertResult.lastID, { ticketKey });
 
     res.status(201).json({
@@ -821,7 +942,7 @@ app.post("/api/requests/:id/signoff", async (req, res) => {
       [signatureDataUrl, signerName, timestamp, timestamp, timestamp, requestId]
     );
 
-    await addNotification(requestId, `Requester signed off by ${signerName}. Request is now Resolved.`);
+    await addNotificationAndEmail(req, requestId, `Requester signed off by ${signerName}. Request is now Resolved.`);
     await addRequestAudit(req, "request_signed_off", "request", requestId);
     res.status(200).json({ ok: true, status: "Resolved" });
   } catch {
@@ -860,7 +981,7 @@ app.post("/api/requests/:id/dispute", async (req, res) => {
       return;
     }
 
-    await addNotification(requestId, `Requester disputed completion. Admin review required before any status change. Reason: ${reason}`);
+    await addNotificationAndEmail(req, requestId, `Requester disputed completion. Admin review required before any status change. Reason: ${reason}`);
     await addRequestAudit(req, "request_signoff_dispute_submitted", "request", requestId, { reason });
 
     res.json({
@@ -1314,7 +1435,8 @@ app.post("/api/admin/requests/:id/assign", requireAdmin, async (req, res) => {
       [assignedDepartment, assigneeUsername, timestamp, timestamp, requestId]
     );
 
-    await addNotification(
+    await addNotificationAndEmail(
+      req,
       requestId,
       `Assigned to ${worker.fullName} (${assignedDepartment}). Status changed to Work In Progress.`
     );
@@ -1378,7 +1500,7 @@ app.post("/api/admin/requests/:id/status", requireAdmin, async (req, res) => {
     const message = note
       ? `Status changed to ${nextStatus}. Note: ${note}`
       : `Status changed to ${nextStatus}.`;
-    await addNotification(requestId, message);
+    await addNotificationAndEmail(req, requestId, message);
     await addRequestAudit(req, "request_status_updated_by_admin", "request", requestId, { status: nextStatus });
 
     res.json({ ok: true });
@@ -1613,7 +1735,7 @@ app.post("/api/worker/requests/:id/status", requireWorker, async (req, res) => {
     const message = note
       ? `${req.session.workerName} set status to ${nextStatus}.${timeMessage} Note: ${note}`
       : `${req.session.workerName} set status to ${nextStatus}.${timeMessage}`;
-    await addNotification(requestId, message);
+    await addNotificationAndEmail(req, requestId, message);
     await addRequestAudit(req, "request_status_updated_by_worker", "request", requestId, {
       status: nextStatus,
       timeSpentMinutes,

@@ -112,6 +112,21 @@ Set environment variables for production:
 - `ADMIN_PASSWORD`
 - `SESSION_SECRET`
 
+## Email Notifications (Resend)
+
+The app can email requesters when a ticket is created and when status updates/notifications occur.
+
+Set these environment variables:
+
+- `RESEND_API_KEY` (required to send)
+- `EMAIL_FROM` (optional, defaults to `Service Desk <onboarding@resend.dev>`; in production you should use a verified sender/domain in Resend)
+- `PUBLIC_BASE_URL` (optional but recommended in production; example: `https://your-domain.example`)
+- `EMAIL_NOTIFICATIONS=false` (optional, disables sending but still records in-app notifications)
+
+Emails include a tracking link to the requester portal using query params:
+
+- `/?reference=REQ-00001&email=user@example.com`
+
 ## Default Worker Accounts
 
 Seeded workers are created automatically with temporary password `Temp#1234`.
